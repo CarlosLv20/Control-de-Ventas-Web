@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Ventas Online — Iniciar sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  body.pantalla-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .tarjeta-login {
+    width: 100%;
+    max-width: 340px;
+    padding: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .tarjeta-login h1 {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+  }
+  .tarjeta-login p.sub {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 24px;
+  }
+  #error-login {
+    color: var(--rust);
+    font-size: 0.85rem;
+    min-height: 18px;
+    margin-bottom: 8px;
+  }
+  .boton-ancho { width: 100%; }
+</style>
+</head>
+<body class="pantalla-login">
+
+<div class="tarjeta-login">
+  <h1>Control de Ventas Online</h1>
+  <p class="sub">Inicia sesión para entrar</p>
+
+  <form id="form-login">
+    <div class="campo">
+      <label for="input-email">Correo</label>
+      <input type="email" id="input-email" required autocomplete="username">
+    </div>
+    <div class="campo">
+      <label for="input-password">Contraseña</label>
+      <input type="password" id="input-password" required autocomplete="current-password">
+    </div>
+    <p id="error-login"></p>
+    <button type="submit" class="boton boton-ancho">Entrar</button>
+  </form>
+</div>
+
+<script type="module" src="js/login.js"></script>
+</body>
+</html>

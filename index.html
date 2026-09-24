@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Ventas Online — Resumen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body style="visibility:hidden">
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="marca">Control de Ventas<span>Online</span></div>
+    <a href="index.html" class="nav-link activo">Resumen</a>
+    <a href="pedidos.html" class="nav-link">Pedidos</a>
+    <a href="clientes.html" class="nav-link">Clientes</a>
+    <a href="fondo.html" class="nav-link">Fondo</a>
+    <a href="#" class="nav-link boton-logout">Cerrar sesión</a>
+  </nav>
+
+  <main class="contenido">
+    <header class="encabezado">
+      <h1>Cuenta Ahorro</h1>
+    </header>
+
+    <section class="hero-saldo">
+      <p class="hero-etiqueta">Saldo actual del fondo</p>
+      <p class="hero-numero" id="saldo-fondo">$0.00</p>
+    </section>
+
+    <section class="stats-grid">
+      <div class="stat">
+        <p class="stat-numero" id="ganancia-acumulada">$0.00</p>
+        <p class="stat-etiqueta">Ganancia acumulada</p>
+      </div>
+      <div class="stat">
+        <p class="stat-numero" id="pedidos-abiertos">0</p>
+        <p class="stat-etiqueta">Pedidos abiertos</p>
+      </div>
+      <div class="stat">
+        <p class="stat-numero" id="pagos-pendientes">0</p>
+        <p class="stat-etiqueta">Pagos pendientes</p>
+      </div>
+    </section>
+
+    <section class="bloque">
+      <h2>Pedidos abiertos</h2>
+      <div id="lista-pedidos-abiertos" class="ledger"></div>
+    </section>
+
+    <section class="bloque">
+      <h2>Movimientos recientes del fondo</h2>
+      <div id="lista-movimientos" class="ledger"></div>
+    </section>
+  </main>
+</div>
+
+<nav class="nav-movil">
+  <a href="index.html" class="nav-movil-link activo">Resumen</a>
+  <a href="pedidos.html" class="nav-movil-link">Pedidos</a>
+  <a href="clientes.html" class="nav-movil-link">Clientes</a>
+  <a href="fondo.html" class="nav-movil-link">Fondo</a>
+  <a href="#" class="nav-movil-link boton-logout">Salir</a>
+</nav>
+
+<script type="module" src="js/auth-guard.js"></script>
+<script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

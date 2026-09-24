@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Ventas Online — Ficha del cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body style="visibility:hidden">
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="marca">Control de Ventas<span>Online</span></div>
+    <a href="index.html" class="nav-link">Resumen</a>
+    <a href="pedidos.html" class="nav-link">Pedidos</a>
+    <a href="clientes.html" class="nav-link activo">Clientes</a>
+    <a href="fondo.html" class="nav-link">Fondo</a>
+    <a href="#" class="nav-link boton-logout">Cerrar sesión</a>
+  </nav>
+
+  <main class="contenido">
+    <p><a href="clientes.html" class="boton secundario" style="display:inline-block;margin-bottom:20px;">Volver a clientes</a></p>
+
+    <header class="encabezado">
+      <h1 id="nombre-cliente">Cliente</h1>
+      <p class="hero-etiqueta" id="telefono-cliente" style="margin-top:6px;"></p>
+    </header>
+
+    <section class="stats-grid">
+      <div class="stat">
+        <p class="stat-numero" id="total-comprado">$0.00</p>
+        <p class="stat-etiqueta">Total comprado histórico</p>
+      </div>
+      <div class="stat">
+        <p class="stat-numero" id="total-pendiente">$0.00</p>
+        <p class="stat-etiqueta">Pendiente de pago</p>
+      </div>
+    </section>
+
+    <div class="bloque">
+      <h2>Pedidos con compras de este cliente</h2>
+      <div id="lista-pedidos-cliente"></div>
+    </div>
+  </main>
+</div>
+
+<nav class="nav-movil">
+  <a href="index.html" class="nav-movil-link">Resumen</a>
+  <a href="pedidos.html" class="nav-movil-link">Pedidos</a>
+  <a href="clientes.html" class="nav-movil-link activo">Clientes</a>
+  <a href="fondo.html" class="nav-movil-link">Fondo</a>
+  <a href="#" class="nav-movil-link boton-logout">Salir</a>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module" src="js/auth-guard.js"></script>
+<script type="module" src="js/cliente.js"></script>
+</body>
+</html>
