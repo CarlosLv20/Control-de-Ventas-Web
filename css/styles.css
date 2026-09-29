@@ -238,6 +238,30 @@ a.fila-ledger.fila-link:hover {
   padding: 16px 4px;
 }
 
+/* ---------- Encabezado de grupo por cliente (en el detalle de un pedido) ---------- */
+
+.grupo-cliente-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 16px 4px 6px;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+}
+
+.grupo-cliente-encabezado:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.grupo-cliente-subtotal {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 /* ---------- Acciones de línea (editar / eliminar) ---------- */
 
 .fila-acciones {

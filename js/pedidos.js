@@ -144,6 +144,28 @@ async function cargarDetalle() {
   if (cerrado) renderResultadoCierre(pedidoActual);
 }
 
+function agruparLineasPorCliente(lineas) {
+  const grupos = new Map();
+
+  for (const l of lineas) {
+    const clave = l.esPersonal ? "__personal__" : (l.clienteId || "__sin_cliente__");
+    if (!grupos.has(clave)) {
+      grupos.set(clave, {
+        nombre: l.esPersonal ? "Compra personal" : (l.clienteNombre || "Sin cliente"),
+        esPersonal: !!l.esPersonal,
+        lineas: []
+      });
+    }
+    grupos.get(clave).lineas.push(l);
+  }
+
+  // Compras personales siempre al final; el resto, alfabético por nombre.
+  return Array.from(grupos.values()).sort((a, b) => {
+    if (a.esPersonal !== b.esPersonal) return a.esPersonal ? 1 : -1;
+    return a.nombre.localeCompare(b.nombre);
+  });
+}
+
 function renderLineas(lineas) {
   const cont = document.getElementById("lista-lineas");
   cont.innerHTML = "";
@@ -154,73 +176,88 @@ function renderLineas(lineas) {
   }
 
   const cerrado = pedidoActual.estado === "cerrado";
+  const grupos = agruparLineasPorCliente(lineas);
 
-  for (const l of lineas) {
-    if (l.id === lineaEnEdicionId) {
-      cont.appendChild(crearFormularioEdicion(l));
-      continue;
-    }
+  for (const grupo of grupos) {
+    const subtotal = grupo.esPersonal
+      ? grupo.lineas.reduce((s, l) => s + (Number(l.costoTemuPersonal) || 0), 0)
+      : grupo.lineas.reduce((s, l) => s + (Number(l.precioCobrado) || 0), 0);
 
-    const fila = document.createElement("div");
-    fila.className = "fila-ledger";
+    const encabezado = document.createElement("div");
+    encabezado.className = "grupo-cliente-encabezado";
+    encabezado.innerHTML = `
+      <span>${grupo.nombre}</span>
+      <span class="grupo-cliente-subtotal">${formatearMoneda(subtotal)}</span>
+    `;
+    cont.appendChild(encabezado);
 
-    if (l.esPersonal) {
-      fila.innerHTML = `
-        <span class="fila-tipo">${l.producto}</span>
-        <span class="fila-nota">Compra personal</span>
-        <span class="fila-monto rust">${formatearMoneda(l.costoTemuPersonal)}</span>
-      `;
-    } else {
-      const estadoTexto = l.pagado ? "Pagado" : "Pendiente";
-      fila.innerHTML = `
-        <span class="fila-tipo">${l.producto}</span>
-        <span class="fila-nota">${l.clienteNombre || "Sin cliente"}</span>
-        <span class="fila-monto gold">${formatearMoneda(l.precioCobrado)}</span>
-      `;
+    for (const l of grupo.lineas) {
+      if (l.id === lineaEnEdicionId) {
+        cont.appendChild(crearFormularioEdicion(l));
+        continue;
+      }
+
+      const fila = document.createElement("div");
+      fila.className = "fila-ledger";
+
+      if (l.esPersonal) {
+        fila.innerHTML = `
+          <span class="fila-tipo">${l.producto}</span>
+          <span class="fila-nota"></span>
+          <span class="fila-monto rust">${formatearMoneda(l.costoTemuPersonal)}</span>
+        `;
+      } else {
+        const estadoTexto = l.pagado ? "Pagado" : "Pendiente";
+        fila.innerHTML = `
+          <span class="fila-tipo">${l.producto}</span>
+          <span class="fila-nota"></span>
+          <span class="fila-monto gold">${formatearMoneda(l.precioCobrado)}</span>
+        `;
+        if (!cerrado) {
+          const botonPagado = document.createElement("button");
+          botonPagado.className = "boton-mini";
+          botonPagado.textContent = estadoTexto;
+          botonPagado.addEventListener("click", async () => {
+            await actualizarLinea(pedidoId, l.id, { pagado: !l.pagado });
+            cargarDetalle();
+          });
+          fila.querySelector(".fila-monto").after(botonPagado);
+        } else {
+          const etiqueta = document.createElement("span");
+          etiqueta.className = "fila-nota";
+          etiqueta.textContent = estadoTexto;
+          fila.appendChild(etiqueta);
+        }
+      }
+
       if (!cerrado) {
-        const botonPagado = document.createElement("button");
-        botonPagado.className = "boton-mini";
-        botonPagado.textContent = estadoTexto;
-        botonPagado.addEventListener("click", async () => {
-          await actualizarLinea(pedidoId, l.id, { pagado: !l.pagado });
+        const acciones = document.createElement("div");
+        acciones.className = "fila-acciones";
+
+        const botonEditar = document.createElement("button");
+        botonEditar.className = "boton-mini";
+        botonEditar.textContent = "Editar";
+        botonEditar.addEventListener("click", () => {
+          lineaEnEdicionId = l.id;
+          renderLineas(lineasCache);
+        });
+
+        const botonEliminar = document.createElement("button");
+        botonEliminar.className = "boton-mini peligro";
+        botonEliminar.textContent = "Eliminar";
+        botonEliminar.addEventListener("click", async () => {
+          if (!confirm(`¿Eliminar la línea "${l.producto}"?`)) return;
+          await eliminarLinea(pedidoId, l.id);
           cargarDetalle();
         });
-        fila.querySelector(".fila-monto").after(botonPagado);
-      } else {
-        const etiqueta = document.createElement("span");
-        etiqueta.className = "fila-nota";
-        etiqueta.textContent = estadoTexto;
-        fila.appendChild(etiqueta);
+
+        acciones.appendChild(botonEditar);
+        acciones.appendChild(botonEliminar);
+        fila.appendChild(acciones);
       }
+
+      cont.appendChild(fila);
     }
-
-    if (!cerrado) {
-      const acciones = document.createElement("div");
-      acciones.className = "fila-acciones";
-
-      const botonEditar = document.createElement("button");
-      botonEditar.className = "boton-mini";
-      botonEditar.textContent = "Editar";
-      botonEditar.addEventListener("click", () => {
-        lineaEnEdicionId = l.id;
-        renderLineas(lineasCache);
-      });
-
-      const botonEliminar = document.createElement("button");
-      botonEliminar.className = "boton-mini peligro";
-      botonEliminar.textContent = "Eliminar";
-      botonEliminar.addEventListener("click", async () => {
-        if (!confirm(`¿Eliminar la línea "${l.producto}"?`)) return;
-        await eliminarLinea(pedidoId, l.id);
-        cargarDetalle();
-      });
-
-      acciones.appendChild(botonEditar);
-      acciones.appendChild(botonEliminar);
-      fila.appendChild(acciones);
-    }
-
-    cont.appendChild(fila);
   }
 }
 
