@@ -354,6 +354,33 @@ a.fila-ledger.fila-link:hover {
 
 .boton.secundario:hover { border-color: var(--gold-dim); }
 
+.acciones-pedido {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+
+.boton.activo-toggle {
+  background: var(--surface-raised);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+}
+
+.campo-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.campo-checkbox input {
+  width: auto;
+}
+
 .boton.peligro {
   background: transparent;
   border: 1px solid var(--rust-dim);

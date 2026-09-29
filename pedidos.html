@@ -56,12 +56,12 @@
         <button id="boton-eliminar-pedido" class="boton peligro" style="margin-top:14px;display:none;">Eliminar este pedido</button>
       </header>
 
-      <div class="bloque">
-        <h2>Líneas del pedido</h2>
-        <div id="lista-lineas" class="ledger"></div>
+      <div class="acciones-pedido" id="acciones-pedido">
+        <button id="boton-toggle-linea" class="boton">+ Registrar venta o preventa</button>
+        <button id="boton-toggle-cierre" class="boton secundario">Cerrar pedido</button>
       </div>
 
-      <div class="bloque" id="bloque-form-linea">
+      <div class="bloque" id="bloque-form-linea" style="display:none">
         <h2>Agregar línea</h2>
         <form id="form-linea">
           <div class="campo">
@@ -99,11 +99,18 @@
             <input type="number" step="0.01" id="input-costo-personal">
           </div>
 
+          <div class="campo">
+            <label class="campo-checkbox">
+              <input type="checkbox" id="input-pagado-ya">
+              Ya me pagó (si lo dejas sin marcar, queda como preventa pendiente)
+            </label>
+          </div>
+
           <button type="submit" class="boton">Agregar línea</button>
         </form>
       </div>
 
-      <div class="bloque" id="bloque-cierre">
+      <div class="bloque" id="bloque-cierre" style="display:none">
         <h2>Cerrar pedido</h2>
         <p class="vacio" id="resumen-cierre"></p>
         <form id="form-cierre">
@@ -113,6 +120,11 @@
           </div>
           <button type="submit" class="boton">Cerrar pedido y calcular ganancia</button>
         </form>
+      </div>
+
+      <div class="bloque">
+        <h2>Líneas del pedido</h2>
+        <div id="lista-lineas" class="ledger"></div>
       </div>
 
       <div class="bloque" id="bloque-resultado" style="display:none">

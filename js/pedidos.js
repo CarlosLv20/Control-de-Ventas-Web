@@ -85,6 +85,17 @@ async function iniciarVistaDetalle() {
     location.href = "pedidos.html";
   });
 
+  document.getElementById("boton-toggle-linea").addEventListener("click", () => {
+    formLineaAbierto = !formLineaAbierto;
+    if (formLineaAbierto) formCierreAbierto = false;
+    actualizarVisibilidadFormularios();
+  });
+  document.getElementById("boton-toggle-cierre").addEventListener("click", () => {
+    formCierreAbierto = !formCierreAbierto;
+    if (formCierreAbierto) formLineaAbierto = false;
+    actualizarVisibilidadFormularios();
+  });
+
   await cargarDetalle();
 }
 
@@ -115,6 +126,18 @@ function actualizarCampoClienteNuevo() {
 
 let lineaEnEdicionId = null;
 let lineasCache = [];
+let formLineaAbierto = false;
+let formCierreAbierto = false;
+
+function actualizarVisibilidadFormularios() {
+  const cerrado = pedidoActual && pedidoActual.estado === "cerrado";
+  document.getElementById("acciones-pedido").style.display = cerrado ? "none" : "flex";
+  document.getElementById("bloque-form-linea").style.display = (!cerrado && formLineaAbierto) ? "block" : "none";
+  document.getElementById("bloque-cierre").style.display = (!cerrado && formCierreAbierto) ? "block" : "none";
+
+  document.getElementById("boton-toggle-linea").classList.toggle("activo-toggle", formLineaAbierto);
+  document.getElementById("boton-toggle-cierre").classList.toggle("activo-toggle", formCierreAbierto);
+}
 
 async function cargarDetalle() {
   const pedidos = await listarPedidos();
@@ -134,8 +157,7 @@ async function cargarDetalle() {
   renderResumenCierre(lineasCache);
 
   const cerrado = pedidoActual.estado === "cerrado";
-  document.getElementById("bloque-form-linea").style.display = cerrado ? "none" : "block";
-  document.getElementById("bloque-cierre").style.display = cerrado ? "none" : "block";
+  actualizarVisibilidadFormularios();
   document.getElementById("bloque-resultado").style.display = cerrado ? "block" : "none";
 
   const botonEliminarPedido = document.getElementById("boton-eliminar-pedido");
@@ -343,8 +365,9 @@ async function manejarAgregarLinea(e) {
 
   const esPersonal = document.getElementById("input-tipo-linea").value === "personal";
   const producto = document.getElementById("input-producto").value.trim();
+  const yaPago = document.getElementById("input-pagado-ya").checked;
 
-  const linea = { producto, esPersonal, pagado: false };
+  const linea = { producto, esPersonal, pagado: esPersonal ? false : yaPago };
 
   if (esPersonal) {
     linea.costoTemuPersonal = Number(document.getElementById("input-costo-personal").value) || 0;
