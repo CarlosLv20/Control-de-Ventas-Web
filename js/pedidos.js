@@ -237,7 +237,7 @@ function renderLineas(lineas) {
         `;
         if (!cerrado) {
           const botonPagado = document.createElement("button");
-          botonPagado.className = "boton-mini";
+          botonPagado.className = `estado-pago ${l.pagado ? "pagado" : "pendiente"}`;
           botonPagado.textContent = estadoTexto;
           botonPagado.addEventListener("click", async () => {
             await actualizarLinea(pedidoId, l.id, { pagado: !l.pagado });
@@ -246,7 +246,7 @@ function renderLineas(lineas) {
           fila.querySelector(".fila-monto").after(botonPagado);
         } else {
           const etiqueta = document.createElement("span");
-          etiqueta.className = "fila-nota";
+          etiqueta.className = `estado-pago ${l.pagado ? "pagado" : "pendiente"}`;
           etiqueta.textContent = estadoTexto;
           fila.appendChild(etiqueta);
         }

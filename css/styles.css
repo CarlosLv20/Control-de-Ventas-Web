@@ -1,24 +1,35 @@
 /* ============================================================
    Control de Ventas Temu — sistema de diseño
-   Inspirado en un libro de cuentas: tinta oscura, acentos de
-   sello (dorado para lo que entra, terracota apagado para lo
-   que sale), cifras en monoespaciada para que las columnas
-   de dinero se alineen como en un ledger real.
+   Inspirado en un libro de cuentas: fondo azul marino, acento
+   azul para lo que entra, terracota para lo que sale, cifras en
+   monoespaciada para que las columnas de dinero se alineen como
+   en un ledger real.
+   Paleta: 0466c8 · 0353a4 · 023e7d · 002855 · 001845 · 001233 ·
+           33415c · 5c677d · 7d8597 · 979dac
    ============================================================ */
 
 :root {
-  --bg: #14181d;
-  --surface: #1b2128;
-  --surface-raised: #212830;
-  --border: #2b323c;
+  --bg: #001233;
+  --surface: #001845;
+  --surface-raised: #002855;
+  --border: #33415c;
 
-  --text: #eae7de;
-  --text-muted: #9aa0a8;
+  --text: #eef1f6;
+  --text-muted: #979dac;
 
-  --gold: #c99a3f;
-  --gold-dim: #8a6c30;
-  --rust: #b6553f;
+  --accent: #0466c8;
+  --accent-hover: #0353a4;
+  --accent-dim: #023e7d;
+  /* Tono más claro del acento para cifras pequeñas sobre fondo oscuro */
+  --accent-text: #5a9ee6;
+  --rust: #d0654c;
   --rust-dim: #7a3c2d;
+
+  /* Estados de pago */
+  --pagado: #2e9e5b;
+  --pagado-hover: #36b268;
+  --pendiente: #d98e04;
+  --pendiente-hover: #eba11a;
 
   --radius: 4px;
 
@@ -81,7 +92,7 @@ button, input, select {
 
 .marca span {
   display: block;
-  color: var(--gold);
+  color: var(--accent-text);
   font-size: 0.95rem;
 }
 
@@ -100,7 +111,7 @@ button, input, select {
 
 .nav-link.activo {
   color: var(--text);
-  border-left-color: var(--gold);
+  border-left-color: var(--accent);
   background: var(--surface-raised);
 }
 
@@ -141,7 +152,7 @@ button, input, select {
   font-family: var(--font-mono);
   font-size: 3rem;
   font-weight: 500;
-  color: var(--gold);
+  color: var(--accent-text);
   margin-top: 6px;
 }
 
@@ -217,7 +228,7 @@ a.fila-ledger.fila-link:hover {
 }
 
 .enlace-nombre:hover {
-  text-decoration-color: var(--gold);
+  text-decoration-color: var(--accent);
 }
 
 .fila-nota {
@@ -229,7 +240,7 @@ a.fila-ledger.fila-link:hover {
   text-align: right;
 }
 
-.fila-monto.gold { color: var(--gold); }
+.fila-monto.gold { color: var(--accent-text); }
 .fila-monto.rust { color: var(--rust); }
 
 .vacio {
@@ -282,13 +293,43 @@ a.fila-ledger.fila-link:hover {
 
 .boton-mini:hover {
   color: var(--text);
-  border-color: var(--gold-dim);
+  border-color: var(--accent-dim);
 }
 
 .boton-mini.peligro:hover {
   color: var(--rust);
   border-color: var(--rust-dim);
 }
+
+/* Botón / etiqueta de estado de pago: relleno sólido */
+.estado-pago {
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+button.estado-pago { cursor: pointer; }
+
+/* Fila con estado de pago: el botón va en su propia columna, junto al monto */
+.fila-ledger:has(> .estado-pago) {
+  grid-template-columns: 1fr 2fr auto 96px;
+}
+
+.estado-pago.pendiente {
+  background: var(--pendiente);
+  color: #1f1400;
+}
+
+.estado-pago.pagado {
+  background: var(--pagado);
+  color: #ffffff;
+}
+
+button.estado-pago.pendiente:hover { background: var(--pendiente-hover); }
+button.estado-pago.pagado:hover { background: var(--pagado-hover); }
 
 .fila-edicion {
   display: flex;
@@ -330,13 +371,13 @@ a.fila-ledger.fila-link:hover {
 }
 
 .campo input:focus, .campo select:focus {
-  outline: 2px solid var(--gold-dim);
+  outline: 2px solid var(--accent-dim);
   outline-offset: 1px;
 }
 
 .boton {
-  background: var(--gold);
-  color: #1a1408;
+  background: var(--accent);
+  color: #ffffff;
   border: none;
   border-radius: var(--radius);
   padding: 10px 18px;
@@ -344,7 +385,7 @@ a.fila-ledger.fila-link:hover {
   cursor: pointer;
 }
 
-.boton:hover { background: #d9ab4c; }
+.boton:hover { background: var(--accent-hover); }
 
 .boton.secundario {
   background: transparent;
@@ -352,7 +393,7 @@ a.fila-ledger.fila-link:hover {
   color: var(--text);
 }
 
-.boton.secundario:hover { border-color: var(--gold-dim); }
+.boton.secundario:hover { border-color: var(--accent-dim); }
 
 .acciones-pedido {
   display: flex;
@@ -363,8 +404,8 @@ a.fila-ledger.fila-link:hover {
 
 .boton.activo-toggle {
   background: var(--surface-raised);
-  border: 1px solid var(--gold-dim);
-  color: var(--gold);
+  border: 1px solid var(--accent-dim);
+  color: var(--accent-text);
 }
 
 .campo-checkbox {
@@ -424,7 +465,7 @@ a.fila-ledger.fila-link:hover {
     padding: 6px 0;
   }
 
-  .nav-movil-link.activo { color: var(--gold); }
+  .nav-movil-link.activo { color: var(--accent-text); }
 }
 
 @media (prefers-reduced-motion: reduce) {

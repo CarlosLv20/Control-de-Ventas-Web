@@ -65,7 +65,7 @@ function renderPedidosCliente(cliente, compras) {
       const estadoTexto = l.pagado ? "Pagado" : "Pendiente";
       fila.innerHTML = `
         <span class="fila-tipo">${l.producto}</span>
-        <span class="fila-nota">${estadoTexto}</span>
+        <span class="fila-nota"><span class="estado-pago ${l.pagado ? "pagado" : "pendiente"}">${estadoTexto}</span></span>
         <span class="fila-monto gold">${formatearMoneda(l.precioCobrado)}</span>
       `;
       ledger.appendChild(fila);
