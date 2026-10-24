@@ -560,6 +560,39 @@ function agruparLineasPorCliente(lineas) {
   });
 }
 
+// Iconos rellenos (estilo Material) para los botones de acción de cada línea.
+const ICONOS = {
+  editar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
+  eliminar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+  guardar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+  cancelar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
+};
+
+// Líneas cuyo cambio de pago se está guardando: su botón se muestra atenuado.
+const lineasGuardando = new Set();
+
+function montoLinea(l) {
+  return Number(l.esPersonal ? l.costoTemuPersonal : l.precioCobrado) || 0;
+}
+
+function crearCelda(clase = "", texto = "") {
+  const td = document.createElement("td");
+  if (clase) td.className = clase;
+  td.textContent = texto;
+  return td;
+}
+
+function crearBotonIcono(tipo, titulo, alHacerClic) {
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = `icono ${tipo}`;
+  boton.title = titulo;
+  boton.setAttribute("aria-label", titulo);
+  boton.innerHTML = ICONOS[tipo];
+  boton.addEventListener("click", alHacerClic);
+  return boton;
+}
+
 function renderLineas(lineas) {
   const cont = document.getElementById("lista-lineas");
   cont.innerHTML = "";
@@ -570,81 +603,119 @@ function renderLineas(lineas) {
   }
 
   const cerrado = pedidoActual.estado === "cerrado";
-  const grupos = agruparLineasPorCliente(lineas);
+  const tabla = document.createElement("table");
+  tabla.className = "tabla-lineas";
+  tabla.innerHTML = `
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th class="num">Precio</th>
+        <th class="col-estado">Estado</th>
+        <th class="col-acciones"><span class="solo-lectores">Acciones</span></th>
+      </tr>
+    </thead>
+  `;
+  const cuerpo = document.createElement("tbody");
 
-  for (const grupo of grupos) {
-    const subtotal = grupo.esPersonal
-      ? grupo.lineas.reduce((s, l) => s + (Number(l.costoTemuPersonal) || 0), 0)
-      : grupo.lineas.reduce((s, l) => s + (Number(l.precioCobrado) || 0), 0);
-
-    const encabezado = document.createElement("div");
-    encabezado.className = "grupo-cliente-encabezado";
-    encabezado.innerHTML = `
-      <span>${grupo.nombre}</span>
-      <span class="grupo-cliente-subtotal">${formatearMoneda(subtotal)}</span>
-    `;
-    cont.appendChild(encabezado);
-
+  for (const grupo of agruparLineasPorCliente(lineas)) {
+    cuerpo.appendChild(crearFilaGrupo(grupo));
     for (const l of grupo.lineas) {
-      if (l.id === lineaEnEdicionId) {
-        cont.appendChild(crearFormularioEdicion(l));
-        continue;
-      }
-
-      const fila = document.createElement("div");
-      fila.className = "fila-ledger";
-
-      if (l.esPersonal) {
-        fila.innerHTML = `
-          <span class="fila-tipo">${l.producto}</span>
-          <span class="fila-nota"></span>
-          <span class="fila-monto rust">${formatearMoneda(l.costoTemuPersonal)}</span>
-        `;
-      } else {
-        const estadoTexto = l.pagado ? "Pagado" : "Pendiente";
-        fila.innerHTML = `
-          <span class="fila-tipo">${l.producto}</span>
-          <span class="fila-nota"></span>
-          <span class="fila-monto gold">${formatearMoneda(l.precioCobrado)}</span>
-        `;
-        if (!cerrado) {
-          const botonPagado = document.createElement("button");
-          pintarBotonPagado(botonPagado, l.pagado);
-          botonPagado.addEventListener("click", () => alternarPagado(l, botonPagado));
-          fila.querySelector(".fila-monto").after(botonPagado);
-        } else {
-          const etiqueta = document.createElement("span");
-          etiqueta.className = `estado-pago ${l.pagado ? "pagado" : "pendiente"}`;
-          etiqueta.textContent = estadoTexto;
-          fila.appendChild(etiqueta);
-        }
-      }
-
-      if (!cerrado) {
-        const acciones = document.createElement("div");
-        acciones.className = "fila-acciones";
-
-        const botonEditar = document.createElement("button");
-        botonEditar.className = "boton-mini";
-        botonEditar.textContent = "Editar";
-        botonEditar.addEventListener("click", () => {
-          lineaEnEdicionId = l.id;
-          renderLineas(lineasCache);
-        });
-
-        const botonEliminar = document.createElement("button");
-        botonEliminar.className = "boton-mini peligro";
-        botonEliminar.textContent = "Eliminar";
-        botonEliminar.addEventListener("click", () => eliminarLineaAlInstante(l));
-
-        acciones.appendChild(botonEditar);
-        acciones.appendChild(botonEliminar);
-        fila.appendChild(acciones);
-      }
-
-      cont.appendChild(fila);
+      cuerpo.appendChild(l.id === lineaEnEdicionId ? crearFormularioEdicion(l) : crearFilaLinea(l, cerrado));
     }
   }
+  tabla.appendChild(cuerpo);
+  tabla.appendChild(crearPieTabla(lineas));
+  cont.appendChild(tabla);
+}
+
+function crearFilaGrupo(grupo) {
+  const total = grupo.lineas.reduce((s, l) => s + montoLinea(l), 0);
+  const fila = document.createElement("tr");
+  fila.className = "fila-grupo";
+
+  const nombre = crearCelda();
+  const etiqueta = document.createElement("span");
+  etiqueta.className = "grupo-nombre";
+  etiqueta.textContent = grupo.nombre;
+  const cuenta = document.createElement("span");
+  cuenta.className = "grupo-cuenta";
+  cuenta.textContent = `${grupo.lineas.length} producto${grupo.lineas.length === 1 ? "" : "s"}`;
+  nombre.append(etiqueta, cuenta);
+
+  const estado = crearCelda("col-estado");
+  if (!grupo.esPersonal) {
+    const debe = grupo.lineas.filter(l => !l.pagado).reduce((s, l) => s + montoLinea(l), 0);
+    const saldo = document.createElement("span");
+    saldo.className = `grupo-debe ${debe ? "debe" : "al-dia"}`;
+    saldo.textContent = debe ? `debe ${formatearMoneda(debe)}` : "al día";
+    estado.appendChild(saldo);
+  }
+
+  const monto = crearCelda("num", formatearMoneda(total));
+  monto.classList.add(grupo.esPersonal ? "rust" : "grupo-total");
+
+  fila.append(nombre, monto, estado, crearCelda("col-acciones"));
+  return fila;
+}
+
+function crearFilaLinea(l, cerrado) {
+  const fila = document.createElement("tr");
+  fila.className = "fila-linea";
+
+  const monto = crearCelda("num", formatearMoneda(montoLinea(l)));
+  monto.classList.add(l.esPersonal ? "rust" : "gold");
+
+  const estado = crearCelda("col-estado");
+  if (!l.esPersonal) {
+    const indicador = document.createElement(cerrado ? "span" : "button");
+    pintarBotonPagado(indicador, l.pagado);
+    if (!cerrado) {
+      indicador.type = "button";
+      const guardando = lineasGuardando.has(l.id);
+      indicador.disabled = guardando;
+      indicador.classList.toggle("guardando", guardando);
+      indicador.addEventListener("click", () => alternarPagado(l));
+    }
+    estado.appendChild(indicador);
+  }
+
+  const acciones = crearCelda("col-acciones");
+  if (!cerrado) {
+    acciones.append(
+      crearBotonIcono("editar", "Editar", () => {
+        lineaEnEdicionId = l.id;
+        refrescarLineas();
+        document.querySelector(".fila-linea.editando input")?.focus();
+      }),
+      crearBotonIcono("eliminar", "Eliminar", () => eliminarLineaAlInstante(l))
+    );
+  }
+
+  fila.append(crearCelda("", l.producto), monto, estado, acciones);
+  return fila;
+}
+
+function crearPieTabla(lineas) {
+  const ventas = lineas.filter(l => !l.esPersonal);
+  const total = ventas.reduce((s, l) => s + montoLinea(l), 0);
+  const porCobrar = ventas.filter(l => !l.pagado).reduce((s, l) => s + montoLinea(l), 0);
+
+  const pie = document.createElement("tfoot");
+  const fila = document.createElement("tr");
+  const saldo = crearCelda("col-estado");
+  const etiqueta = document.createElement("span");
+  etiqueta.className = `grupo-debe ${porCobrar ? "debe" : "al-dia"}`;
+  etiqueta.textContent = porCobrar ? `por cobrar ${formatearMoneda(porCobrar)}` : "todo cobrado";
+  saldo.appendChild(etiqueta);
+
+  fila.append(
+    crearCelda("", `Total cobrado a clientes · ${ventas.length} producto${ventas.length === 1 ? "" : "s"}`),
+    crearCelda("num", formatearMoneda(total)),
+    saldo,
+    crearCelda("col-acciones")
+  );
+  pie.appendChild(fila);
+  return pie;
 }
 
 /* ---------- Cambios al instante: se ven de inmediato y se guardan por detrás ---------- */
@@ -654,23 +725,21 @@ function pintarBotonPagado(boton, pagado) {
   boton.textContent = pagado ? "Pagado" : "Pendiente";
 }
 
-async function alternarPagado(l, boton) {
-  if (boton.disabled) return;
+async function alternarPagado(l) {
+  if (lineasGuardando.has(l.id)) return;
   const anterior = l.pagado;
   l.pagado = !anterior;
-  pintarBotonPagado(boton, l.pagado);
-  boton.disabled = true;
-  boton.classList.add("guardando");
+  lineasGuardando.add(l.id);
+  refrescarLineas();
   try {
     await actualizarLinea(pedidoId, l.id, { pagado: l.pagado });
   } catch (err) {
     console.error("Error guardando el pago:", err);
     l.pagado = anterior;
-    pintarBotonPagado(boton, anterior);
     mostrarAviso(`No se pudo guardar el pago de "${l.producto}". Revisa tu conexión.`);
   } finally {
-    boton.disabled = false;
-    boton.classList.remove("guardando");
+    lineasGuardando.delete(l.id);
+    refrescarLineas();
   }
 }
 
@@ -689,58 +758,74 @@ async function eliminarLineaAlInstante(l) {
   }
 }
 
+// Edición dentro de la misma fila: producto y monto se vuelven campos.
+// Enter guarda y Esc cancela.
 function crearFormularioEdicion(l) {
-  const fila = document.createElement("div");
-  fila.className = "fila-edicion";
+  const fila = document.createElement("tr");
+  fila.className = "fila-linea editando";
 
   const inputProducto = document.createElement("input");
+  inputProducto.className = "celda";
   inputProducto.value = l.producto;
   inputProducto.placeholder = "Producto";
+  inputProducto.setAttribute("aria-label", "Producto");
 
   const inputMonto = document.createElement("input");
+  inputMonto.className = "celda num";
   inputMonto.type = "number";
   inputMonto.step = "0.01";
-  inputMonto.value = l.esPersonal ? l.costoTemuPersonal : l.precioCobrado;
-  inputMonto.placeholder = l.esPersonal ? "Costo en Temu" : "Precio cobrado";
+  inputMonto.min = "0";
+  inputMonto.inputMode = "decimal";
+  inputMonto.value = montoLinea(l);
+  inputMonto.setAttribute("aria-label", l.esPersonal ? "Costo en Temu" : "Precio cobrado");
 
-  const botonGuardar = document.createElement("button");
-  botonGuardar.className = "boton-mini";
-  botonGuardar.textContent = "Guardar";
-  botonGuardar.addEventListener("click", async () => {
-    const cambios = { producto: inputProducto.value.trim() };
-    if (l.esPersonal) {
-      cambios.costoTemuPersonal = Number(inputMonto.value) || 0;
-    } else {
-      cambios.precioCobrado = Number(inputMonto.value) || 0;
+  const cancelar = () => {
+    lineaEnEdicionId = null;
+    refrescarLineas();
+  };
+
+  const botonGuardar = crearBotonIcono("guardar", "Guardar", guardar);
+  const botonCancelar = crearBotonIcono("cancelar", "Cancelar", cancelar);
+
+  async function guardar() {
+    const producto = inputProducto.value.trim();
+    const monto = Number(inputMonto.value);
+    if (!producto || inputMonto.value === "" || !Number.isFinite(monto) || monto < 0) {
+      mostrarAviso("Escribe el producto y un monto válido.");
+      (producto ? inputMonto : inputProducto).focus();
+      return;
     }
+    const cambios = { producto };
+    if (l.esPersonal) cambios.costoTemuPersonal = monto;
+    else cambios.precioCobrado = monto;
+
     botonGuardar.disabled = true;
-    botonGuardar.textContent = "Guardando…";
     try {
       await actualizarLinea(pedidoId, l.id, cambios);
       Object.assign(l, cambios);
       lineaEnEdicionId = null;
       refrescarLineas();
     } catch (err) {
-      // El formulario sigue abierto con lo que escribiste, para reintentar.
+      // La fila sigue abierta con lo que escribiste, para reintentar.
       console.error("Error guardando la línea:", err);
       mostrarAviso(AVISO_CONEXION);
       botonGuardar.disabled = false;
-      botonGuardar.textContent = "Guardar";
     }
+  }
+
+  fila.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); guardar(); }
+    if (e.key === "Escape") cancelar();
   });
 
-  const botonCancelar = document.createElement("button");
-  botonCancelar.className = "boton-mini";
-  botonCancelar.textContent = "Cancelar";
-  botonCancelar.addEventListener("click", () => {
-    lineaEnEdicionId = null;
-    renderLineas(lineasCache);
-  });
+  const celdaProducto = crearCelda();
+  celdaProducto.appendChild(inputProducto);
+  const celdaMonto = crearCelda("num");
+  celdaMonto.appendChild(inputMonto);
+  const acciones = crearCelda("col-acciones");
+  acciones.append(botonGuardar, botonCancelar);
 
-  fila.appendChild(inputProducto);
-  fila.appendChild(inputMonto);
-  fila.appendChild(botonGuardar);
-  fila.appendChild(botonCancelar);
+  fila.append(celdaProducto, celdaMonto, crearCelda("col-estado"), acciones);
   return fila;
 }
 

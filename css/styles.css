@@ -249,29 +249,133 @@ a.fila-ledger.fila-link:hover {
   padding: 16px 4px;
 }
 
-/* ---------- Encabezado de grupo por cliente (en el detalle de un pedido) ---------- */
+/* ---------- Tabla de líneas del pedido, agrupada por cliente ---------- */
 
-.grupo-cliente-encabezado {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 16px 4px 6px;
+.tabla-lineas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla-lineas th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.tabla-lineas td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.tabla-lineas .num {
+  text-align: right;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.tabla-lineas th.num { font-family: var(--font-body); }
+.tabla-lineas .gold { color: var(--accent-text); }
+.tabla-lineas .rust { color: var(--rust); }
+
+.tabla-lineas .col-estado { width: 140px; }
+.tabla-lineas .col-acciones { width: 1%; white-space: nowrap; text-align: right; }
+
+.tabla-lineas .fila-linea td:first-child { padding-left: 22px; }
+.tabla-lineas .fila-linea:hover td { background: var(--surface); }
+
+.fila-grupo td {
+  background: var(--surface);
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.grupo-nombre {
   font-family: var(--font-display);
   font-size: 0.98rem;
-  color: var(--text);
-  border-top: 1px solid var(--border);
 }
 
-.grupo-cliente-encabezado:first-of-type {
-  border-top: none;
-  padding-top: 0;
-}
-
-.grupo-cliente-subtotal {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+.grupo-cuenta {
   color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-left: 8px;
 }
+
+.grupo-total { font-weight: 500; }
+
+.grupo-debe {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.grupo-debe.debe { color: var(--pendiente); }
+.grupo-debe.al-dia { color: var(--pagado-hover); }
+
+.tabla-lineas tfoot td {
+  border-bottom: none;
+  padding-top: 14px;
+  font-weight: 500;
+}
+
+.tabla-lineas .fila-linea.editando td { background: var(--surface-raised); }
+
+.tabla-lineas input.celda {
+  width: 100%;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.tabla-lineas input.celda.num { max-width: 130px; }
+
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Botones de acción rellenos: azul = editar, rojo = eliminar, verde = guardar */
+.icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.icono svg { width: 16px; height: 16px; fill: currentColor; }
+.icono:active { transform: scale(0.94); }
+.icono:disabled { opacity: 0.6; cursor: wait; }
+.icono.editar { background: var(--accent); }
+.icono.editar:hover { background: var(--accent-hover); }
+.icono.eliminar { background: var(--rust); }
+.icono.eliminar:hover { background: #b84f38; }
+.icono.guardar { background: var(--pagado); }
+.icono.guardar:hover { background: var(--pagado-hover); }
+.icono.cancelar { background: var(--border); }
+.icono.cancelar:hover { background: #46536f; }
 
 /* ---------- Acciones de línea (editar / eliminar) ---------- */
 
@@ -312,11 +416,6 @@ a.fila-ledger.fila-link:hover {
 }
 
 button.estado-pago { cursor: pointer; }
-
-/* Fila con estado de pago: el botón va en su propia columna, junto al monto */
-.fila-ledger:has(> .estado-pago) {
-  grid-template-columns: 1fr 2fr auto 96px;
-}
 
 .estado-pago.pendiente {
   background: var(--pendiente);
@@ -591,10 +690,52 @@ button.estado-pago.guardando {
 
   .stats-grid { grid-template-columns: 1fr; }
 
-  .fila-ledger:has(> .estado-pago) {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
-    gap: 10px;
+  /* Tabla de líneas → tarjetas: producto y precio arriba, estado y botones abajo */
+  .tabla-lineas thead { display: none; }
+  .tabla-lineas, .tabla-lineas tbody, .tabla-lineas tfoot,
+  .tabla-lineas tr, .tabla-lineas td { display: block; width: 100%; }
+
+  .tabla-lineas .fila-grupo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    background: var(--surface);
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
   }
+  .tabla-lineas .fila-grupo td { width: auto; padding: 0; border: none; background: none; }
+  .tabla-lineas .fila-grupo td:first-child { flex: 1 1 100%; }
+  .tabla-lineas .fila-grupo td:empty { display: none; }
+
+  .tabla-lineas .fila-linea {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    align-items: center;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabla-lineas .fila-linea td { width: auto; padding: 0; border: none; }
+  .tabla-lineas .fila-linea td:first-child { padding-left: 0; }
+  .tabla-lineas .fila-linea:hover td { background: none; }
+  .tabla-lineas .fila-linea .col-acciones { grid-column: 2; }
+  .tabla-lineas .fila-linea .col-estado:empty { display: none; }
+
+  .tabla-lineas .fila-linea.editando { background: var(--surface-raised); padding: 10px 8px; }
+  .tabla-lineas .fila-linea.editando td { background: none; }
+  .tabla-lineas input.celda.num { max-width: none; }
+
+  .tabla-lineas tfoot tr {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding-top: 14px;
+  }
+  .tabla-lineas tfoot td { width: auto; padding: 0 4px; }
+  .tabla-lineas tfoot td:first-child { flex: 1 1 100%; }
+  .tabla-lineas tfoot td:empty { display: none; }
 
   .nav-movil {
     display: flex;
