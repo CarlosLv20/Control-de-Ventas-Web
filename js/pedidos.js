@@ -1,5 +1,5 @@
 import {
-  listarPedidos, crearPedido,
+  listarPedidos, crearPedido, obtenerPedido,
   listarClientes, crearCliente,
   listarLineasPedido, agregarLineasPedido, actualizarLinea, eliminarLinea,
   cerrarPedido, eliminarPedido
@@ -11,6 +11,24 @@ const pedidoId = params.get("id");
 function formatearMoneda(valor) {
   return "$" + (Number(valor) || 0).toFixed(2);
 }
+
+// Aviso flotante para errores que no deben pasar desapercibidos.
+function mostrarAviso(texto) {
+  let aviso = document.getElementById("aviso");
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "aviso";
+    aviso.className = "aviso";
+    aviso.setAttribute("role", "alert");
+    document.body.appendChild(aviso);
+  }
+  aviso.textContent = texto;
+  aviso.classList.add("visible");
+  clearTimeout(mostrarAviso.temporizador);
+  mostrarAviso.temporizador = setTimeout(() => aviso.classList.remove("visible"), 4000);
+}
+
+const AVISO_CONEXION = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.";
 
 /* ============================================================
    Vista: lista de pedidos
@@ -345,7 +363,8 @@ async function manejarGuardarCaptura(e) {
   try {
     const cliente = esPersonal ? null : await obtenerOCrearCliente(nombreCliente);
     const pagado = document.getElementById("input-pagado-ya").checked;
-    await agregarLineasPedido(pedidoId, filas.map(f => construirLinea(f, cliente, pagado)));
+    const guardadas = await agregarLineasPedido(pedidoId, filas.map(f => construirLinea(f, cliente, pagado)));
+    lineasCache.push(...guardadas);
 
     ok.textContent = `✓ ${filas.length} producto${filas.length === 1 ? "" : "s"} guardado${filas.length === 1 ? "" : "s"}` +
       (cliente ? ` para ${cliente.nombre}` : "");
@@ -357,7 +376,7 @@ async function manejarGuardarCaptura(e) {
     reiniciarFilasCaptura();
     poblarListaClientes();
     enfocarInicioCaptura();
-    cargarDetalle();
+    refrescarLineas();
   } catch (err) {
     console.error("Error guardando productos:", err);
     error.textContent = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo; no se perdió lo que escribiste.";
@@ -455,14 +474,15 @@ async function manejarGuardarPegar(e) {
     const pagado = document.getElementById("input-pagado-pegar").checked;
     const lineas = items.map(it =>
       construirLinea(it, clientesPorNombre.get(normalizarNombre(it.cliente)), pagado));
-    await agregarLineasPedido(pedidoId, lineas);
+    const guardadas = await agregarLineasPedido(pedidoId, lineas);
+    lineasCache.push(...guardadas);
 
     document.getElementById("input-pegar").value = "";
     document.getElementById("input-pagado-pegar").checked = false;
     actualizarResumenPegar();
     ok.textContent = `✓ ${lineas.length} productos guardados para ${clientesPorNombre.size} clientes`;
     poblarListaClientes();
-    cargarDetalle();
+    refrescarLineas();
   } catch (err) {
     console.error("Error guardando la lista:", err);
     error.textContent = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo; la lista sigue aquí.";
@@ -488,8 +508,7 @@ function actualizarVisibilidadFormularios() {
 }
 
 async function cargarDetalle() {
-  const pedidos = await listarPedidos();
-  pedidoActual = pedidos.find(p => p.id === pedidoId);
+  pedidoActual = await obtenerPedido(pedidoId);
 
   if (!pedidoActual) {
     document.getElementById("titulo-pedido").textContent = "Pedido no encontrado";
@@ -501,8 +520,7 @@ async function cargarDetalle() {
     pedidoActual.estado === "cerrado" ? "Cerrado" : "Abierto";
 
   lineasCache = await listarLineasPedido(pedidoId);
-  renderLineas(lineasCache);
-  renderResumenCierre(lineasCache);
+  refrescarLineas();
 
   const cerrado = pedidoActual.estado === "cerrado";
   actualizarVisibilidadFormularios();
@@ -512,6 +530,12 @@ async function cargarDetalle() {
   botonEliminarPedido.style.display = cerrado ? "none" : "inline-block";
 
   if (cerrado) renderResultadoCierre(pedidoActual);
+}
+
+// Redibuja la lista desde lo que ya tenemos en memoria, sin volver a Firebase.
+function refrescarLineas() {
+  renderLineas(lineasCache);
+  renderResumenCierre(lineasCache);
 }
 
 function agruparLineasPorCliente(lineas) {
@@ -585,12 +609,8 @@ function renderLineas(lineas) {
         `;
         if (!cerrado) {
           const botonPagado = document.createElement("button");
-          botonPagado.className = `estado-pago ${l.pagado ? "pagado" : "pendiente"}`;
-          botonPagado.textContent = estadoTexto;
-          botonPagado.addEventListener("click", async () => {
-            await actualizarLinea(pedidoId, l.id, { pagado: !l.pagado });
-            cargarDetalle();
-          });
+          pintarBotonPagado(botonPagado, l.pagado);
+          botonPagado.addEventListener("click", () => alternarPagado(l, botonPagado));
           fila.querySelector(".fila-monto").after(botonPagado);
         } else {
           const etiqueta = document.createElement("span");
@@ -615,11 +635,7 @@ function renderLineas(lineas) {
         const botonEliminar = document.createElement("button");
         botonEliminar.className = "boton-mini peligro";
         botonEliminar.textContent = "Eliminar";
-        botonEliminar.addEventListener("click", async () => {
-          if (!confirm(`¿Eliminar la línea "${l.producto}"?`)) return;
-          await eliminarLinea(pedidoId, l.id);
-          cargarDetalle();
-        });
+        botonEliminar.addEventListener("click", () => eliminarLineaAlInstante(l));
 
         acciones.appendChild(botonEditar);
         acciones.appendChild(botonEliminar);
@@ -628,6 +644,48 @@ function renderLineas(lineas) {
 
       cont.appendChild(fila);
     }
+  }
+}
+
+/* ---------- Cambios al instante: se ven de inmediato y se guardan por detrás ---------- */
+
+function pintarBotonPagado(boton, pagado) {
+  boton.className = `estado-pago ${pagado ? "pagado" : "pendiente"}`;
+  boton.textContent = pagado ? "Pagado" : "Pendiente";
+}
+
+async function alternarPagado(l, boton) {
+  if (boton.disabled) return;
+  const anterior = l.pagado;
+  l.pagado = !anterior;
+  pintarBotonPagado(boton, l.pagado);
+  boton.disabled = true;
+  boton.classList.add("guardando");
+  try {
+    await actualizarLinea(pedidoId, l.id, { pagado: l.pagado });
+  } catch (err) {
+    console.error("Error guardando el pago:", err);
+    l.pagado = anterior;
+    pintarBotonPagado(boton, anterior);
+    mostrarAviso(`No se pudo guardar el pago de "${l.producto}". Revisa tu conexión.`);
+  } finally {
+    boton.disabled = false;
+    boton.classList.remove("guardando");
+  }
+}
+
+async function eliminarLineaAlInstante(l) {
+  if (!confirm(`¿Eliminar la línea "${l.producto}"?`)) return;
+  const posicion = lineasCache.indexOf(l);
+  lineasCache.splice(posicion, 1);
+  refrescarLineas();
+  try {
+    await eliminarLinea(pedidoId, l.id);
+  } catch (err) {
+    console.error("Error eliminando la línea:", err);
+    lineasCache.splice(posicion, 0, l);
+    refrescarLineas();
+    mostrarAviso(`No se pudo eliminar "${l.producto}". Revisa tu conexión.`);
   }
 }
 
@@ -655,9 +713,20 @@ function crearFormularioEdicion(l) {
     } else {
       cambios.precioCobrado = Number(inputMonto.value) || 0;
     }
-    await actualizarLinea(pedidoId, l.id, cambios);
-    lineaEnEdicionId = null;
-    cargarDetalle();
+    botonGuardar.disabled = true;
+    botonGuardar.textContent = "Guardando…";
+    try {
+      await actualizarLinea(pedidoId, l.id, cambios);
+      Object.assign(l, cambios);
+      lineaEnEdicionId = null;
+      refrescarLineas();
+    } catch (err) {
+      // El formulario sigue abierto con lo que escribiste, para reintentar.
+      console.error("Error guardando la línea:", err);
+      mostrarAviso(AVISO_CONEXION);
+      botonGuardar.disabled = false;
+      botonGuardar.textContent = "Guardar";
+    }
   });
 
   const botonCancelar = document.createElement("button");

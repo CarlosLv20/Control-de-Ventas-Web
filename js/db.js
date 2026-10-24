@@ -109,6 +109,11 @@ export async function listarPedidos() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function obtenerPedido(pedidoId) {
+  const snap = await getDoc(doc(db, "pedidos", pedidoId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 export function suscribirPedidos(callback) {
   return onSnapshot(query(pedidosRef, orderBy("fecha", "desc")), snap => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -123,15 +128,21 @@ export async function agregarLineaPedido(pedidoId, linea) {
 
 // Guarda varias líneas en una sola operación: o se guardan todas o ninguna.
 // Firestore admite hasta 500 escrituras por lote, así que partimos en tandas.
+// Devuelve las líneas guardadas con su id, para no tener que volver a leerlas.
 export async function agregarLineasPedido(pedidoId, lineas) {
   const TAMANO_LOTE = 450;
+  const guardadas = [];
   for (let i = 0; i < lineas.length; i += TAMANO_LOTE) {
     const lote = writeBatch(db);
-    for (const linea of lineas.slice(i, i + TAMANO_LOTE)) {
-      lote.set(doc(detallePedidoRef(pedidoId)), linea);
-    }
+    const tanda = lineas.slice(i, i + TAMANO_LOTE).map(linea => {
+      const ref = doc(detallePedidoRef(pedidoId));
+      lote.set(ref, linea);
+      return { id: ref.id, ...linea };
+    });
     await lote.commit();
+    guardadas.push(...tanda);
   }
+  return guardadas;
 }
 
 export async function listarLineasPedido(pedidoId) {
