@@ -57,15 +57,22 @@
       </header>
 
       <div class="acciones-pedido" id="acciones-pedido">
-        <button id="boton-toggle-linea" class="boton">+ Registrar venta o preventa</button>
+        <button id="boton-toggle-linea" class="boton">+ Registrar productos</button>
         <button id="boton-toggle-cierre" class="boton secundario">Cerrar pedido</button>
       </div>
 
       <div class="bloque" id="bloque-form-linea" style="display:none">
-        <h2>Agregar línea</h2>
-        <form id="form-linea">
+        <h2>Registrar productos</h2>
+
+        <div class="selector-modo">
+          <button type="button" class="selector-modo-opcion activo" data-modo="cliente">Por cliente</button>
+          <button type="button" class="selector-modo-opcion" data-modo="pegar">Pegar lista</button>
+        </div>
+
+        <!-- Modo 1: un cliente, varios productos seguidos -->
+        <form id="form-linea" autocomplete="off">
           <div class="campo">
-            <label for="input-tipo-linea">Tipo de línea</label>
+            <label for="input-tipo-linea">Tipo</label>
             <select id="input-tipo-linea">
               <option value="venta">Venta a un cliente</option>
               <option value="personal">Compra personal (mía)</option>
@@ -74,39 +81,55 @@
 
           <div class="campo" id="campo-cliente">
             <label for="input-cliente">Cliente</label>
-            <select id="input-cliente">
-              <option value="__nuevo__">+ Cliente nuevo…</option>
-            </select>
+            <input type="text" id="input-cliente" list="lista-clientes" placeholder="Escribe para buscar o crear uno nuevo">
+            <datalist id="lista-clientes"></datalist>
+            <p class="ayuda" id="ayuda-cliente"></p>
           </div>
 
-          <div class="campo" id="campo-cliente-nuevo" style="display:none">
-            <label for="input-cliente-nuevo">Nombre del cliente nuevo</label>
-            <input type="text" id="input-cliente-nuevo">
+          <div class="captura-encabezado">
+            <span>Producto</span>
+            <span id="etiqueta-monto">Precio cobrado</span>
+            <span></span>
+          </div>
+          <div id="filas-captura"></div>
+
+          <div class="captura-pie">
+            <button type="button" id="boton-agregar-fila" class="boton-mini">+ Otra fila</button>
+            <span class="captura-total" id="total-captura"></span>
           </div>
 
-          <div class="campo">
-            <label for="input-producto">Producto</label>
-            <input type="text" id="input-producto" required>
-          </div>
-
-          <div class="campo" id="campo-precio">
-            <label for="input-precio">Precio cobrado</label>
-            <input type="number" step="0.01" id="input-precio">
-          </div>
-
-          <div class="campo" id="campo-costo-personal" style="display:none">
-            <label for="input-costo-personal">Costo en Temu (tuyo)</label>
-            <input type="number" step="0.01" id="input-costo-personal">
-          </div>
-
-          <div class="campo">
+          <div class="campo" id="campo-pagado">
             <label class="campo-checkbox">
               <input type="checkbox" id="input-pagado-ya">
-              Ya me pagó (si lo dejas sin marcar, queda como preventa pendiente)
+              Ya me pagó todo esto (si lo dejas sin marcar, queda como pendiente)
             </label>
           </div>
 
-          <button type="submit" class="boton">Agregar línea</button>
+          <p class="ayuda">Enter pasa al siguiente campo y crea una fila nueva al final. Ctrl + Enter guarda.</p>
+          <p class="ayuda error" id="error-captura"></p>
+          <button type="submit" class="boton" id="boton-guardar-captura">Guardar productos</button>
+          <p class="mensaje-ok" id="ok-captura"></p>
+        </form>
+
+        <!-- Modo 2: pegar muchas líneas de golpe (WhatsApp, Excel, notas) -->
+        <form id="form-pegar" style="display:none">
+          <div class="campo">
+            <label for="input-pegar">Una línea por producto: cliente, producto, precio</label>
+            <textarea id="input-pegar" rows="8" placeholder="María López, Audífonos, 350&#10;María López, Funda de teléfono, 120&#10;Juan Pérez, Lámpara LED, 220"></textarea>
+          </div>
+          <p class="ayuda">También funciona copiando 3 columnas desde Excel. Los clientes que no existan se crean solos.</p>
+          <p class="ayuda" id="resumen-pegar"></p>
+          <p class="ayuda error" id="error-pegar"></p>
+
+          <div class="campo">
+            <label class="campo-checkbox">
+              <input type="checkbox" id="input-pagado-pegar">
+              Ya me pagaron todo esto
+            </label>
+          </div>
+
+          <button type="submit" class="boton" id="boton-guardar-pegar">Guardar lista</button>
+          <p class="mensaje-ok" id="ok-pegar"></p>
         </form>
       </div>
 

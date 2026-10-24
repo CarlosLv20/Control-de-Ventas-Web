@@ -1,7 +1,7 @@
 import {
   listarPedidos, crearPedido,
   listarClientes, crearCliente,
-  listarLineasPedido, agregarLineaPedido, actualizarLinea, eliminarLinea,
+  listarLineasPedido, agregarLineasPedido, actualizarLinea, eliminarLinea,
   cerrarPedido, eliminarPedido
 } from "./db.js";
 
@@ -71,13 +71,13 @@ async function iniciarVistaDetalle() {
   document.getElementById("vista-detalle").style.display = "block";
 
   clientesCache = await listarClientes();
-  poblarSelectClientes();
+  poblarListaClientes();
+  iniciarCaptura();
+  iniciarPegarLista();
 
-  document.getElementById("input-tipo-linea").addEventListener("change", actualizarCamposSegunTipo);
-  document.getElementById("input-cliente").addEventListener("change", actualizarCampoClienteNuevo);
-  actualizarCamposSegunTipo();
-
-  document.getElementById("form-linea").addEventListener("submit", manejarAgregarLinea);
+  document.querySelectorAll(".selector-modo-opcion").forEach(boton => {
+    boton.addEventListener("click", () => cambiarModoCaptura(boton.dataset.modo));
+  });
   document.getElementById("form-cierre").addEventListener("submit", manejarCerrarPedido);
   document.getElementById("boton-eliminar-pedido").addEventListener("click", async () => {
     if (!confirm("¿Eliminar este pedido completo, con todas sus líneas? Esto no se puede deshacer.")) return;
@@ -89,6 +89,7 @@ async function iniciarVistaDetalle() {
     formLineaAbierto = !formLineaAbierto;
     if (formLineaAbierto) formCierreAbierto = false;
     actualizarVisibilidadFormularios();
+    if (formLineaAbierto) enfocarInicioCaptura();
   });
   document.getElementById("boton-toggle-cierre").addEventListener("click", () => {
     formCierreAbierto = !formCierreAbierto;
@@ -99,29 +100,376 @@ async function iniciarVistaDetalle() {
   await cargarDetalle();
 }
 
-function poblarSelectClientes() {
-  const select = document.getElementById("input-cliente");
-  select.innerHTML = '<option value="__nuevo__">+ Cliente nuevo…</option>';
+/* ---------- Clientes: búsqueda por nombre ---------- */
+
+// Compara nombres sin importar mayúsculas, acentos ni espacios de más.
+function normalizarNombre(nombre) {
+  return nombre.normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function buscarClientePorNombre(nombre) {
+  const clave = normalizarNombre(nombre);
+  return clientesCache.find(c => normalizarNombre(c.nombre || "") === clave) || null;
+}
+
+function poblarListaClientes() {
+  const lista = document.getElementById("lista-clientes");
+  lista.innerHTML = "";
   for (const c of clientesCache) {
     const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = c.nombre;
-    select.appendChild(opt);
+    opt.value = c.nombre;
+    lista.appendChild(opt);
   }
 }
 
-function actualizarCamposSegunTipo() {
-  const esPersonal = document.getElementById("input-tipo-linea").value === "personal";
-  document.getElementById("campo-cliente").style.display = esPersonal ? "none" : "flex";
-  document.getElementById("campo-cliente-nuevo").style.display =
-    (!esPersonal && document.getElementById("input-cliente").value === "__nuevo__") ? "flex" : "none";
-  document.getElementById("campo-precio").style.display = esPersonal ? "none" : "flex";
-  document.getElementById("campo-costo-personal").style.display = esPersonal ? "flex" : "none";
+// Devuelve el cliente con ese nombre; si no existe, lo crea.
+async function obtenerOCrearCliente(nombre) {
+  const existente = buscarClientePorNombre(nombre);
+  if (existente) return existente;
+  const limpio = nombre.trim().replace(/\s+/g, " ");
+  const ref = await crearCliente(limpio);
+  const nuevo = { id: ref.id, nombre: limpio };
+  clientesCache.push(nuevo);
+  return nuevo;
 }
 
-function actualizarCampoClienteNuevo() {
-  const esNuevo = document.getElementById("input-cliente").value === "__nuevo__";
-  document.getElementById("campo-cliente-nuevo").style.display = esNuevo ? "flex" : "none";
+/* ---------- Modo de captura: por cliente / pegar lista ---------- */
+
+function cambiarModoCaptura(modo) {
+  document.querySelectorAll(".selector-modo-opcion").forEach(b => {
+    b.classList.toggle("activo", b.dataset.modo === modo);
+  });
+  document.getElementById("form-linea").style.display = modo === "cliente" ? "block" : "none";
+  document.getElementById("form-pegar").style.display = modo === "pegar" ? "block" : "none";
+  enfocarInicioCaptura();
+}
+
+function enfocarInicioCaptura() {
+  if (document.getElementById("form-pegar").style.display === "block") {
+    document.getElementById("input-pegar").focus();
+  } else if (esCapturaPersonal()) {
+    document.querySelector("#filas-captura .captura-producto")?.focus();
+  } else {
+    document.getElementById("input-cliente").focus();
+  }
+}
+
+/* ---------- Captura por cliente: varias filas producto + monto ---------- */
+
+function esCapturaPersonal() {
+  return document.getElementById("input-tipo-linea").value === "personal";
+}
+
+function iniciarCaptura() {
+  const form = document.getElementById("form-linea");
+  const inputCliente = document.getElementById("input-cliente");
+
+  document.getElementById("input-tipo-linea").addEventListener("change", actualizarCamposSegunTipo);
+  inputCliente.addEventListener("input", actualizarAyudaCliente);
+  inputCliente.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      document.querySelector("#filas-captura .captura-producto")?.focus();
+    }
+  });
+
+  document.getElementById("boton-agregar-fila").addEventListener("click", () => {
+    agregarFilaCaptura().querySelector(".captura-producto").focus();
+  });
+
+  form.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  form.addEventListener("submit", manejarGuardarCaptura);
+
+  reiniciarFilasCaptura();
+  actualizarCamposSegunTipo();
+}
+
+function actualizarCamposSegunTipo() {
+  const esPersonal = esCapturaPersonal();
+  document.getElementById("campo-cliente").style.display = esPersonal ? "none" : "flex";
+  document.getElementById("campo-pagado").style.display = esPersonal ? "none" : "flex";
+  document.getElementById("etiqueta-monto").textContent = esPersonal ? "Costo en Temu" : "Precio cobrado";
+  actualizarTotalCaptura();
+}
+
+function actualizarAyudaCliente() {
+  const nombre = document.getElementById("input-cliente").value.trim();
+  const ayuda = document.getElementById("ayuda-cliente");
+  if (!nombre) {
+    ayuda.textContent = "";
+  } else if (buscarClientePorNombre(nombre)) {
+    ayuda.textContent = "✓ Cliente existente";
+  } else {
+    ayuda.textContent = `Se creará "${nombre}" como cliente nuevo`;
+  }
+}
+
+function agregarFilaCaptura() {
+  const cont = document.getElementById("filas-captura");
+  const fila = document.createElement("div");
+  fila.className = "fila-captura";
+
+  const inputProducto = document.createElement("input");
+  inputProducto.type = "text";
+  inputProducto.className = "captura-producto";
+  inputProducto.placeholder = "Producto";
+
+  const inputMonto = document.createElement("input");
+  inputMonto.type = "number";
+  inputMonto.step = "0.01";
+  inputMonto.min = "0";
+  inputMonto.inputMode = "decimal";
+  inputMonto.className = "captura-monto";
+  inputMonto.placeholder = "0.00";
+
+  const botonQuitar = document.createElement("button");
+  botonQuitar.type = "button";
+  botonQuitar.className = "boton-mini";
+  botonQuitar.textContent = "✕";
+  botonQuitar.title = "Quitar fila";
+  botonQuitar.addEventListener("click", () => {
+    fila.remove();
+    if (!cont.children.length) agregarFilaCaptura();
+    actualizarTotalCaptura();
+  });
+
+  inputProducto.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      inputMonto.focus();
+    }
+  });
+  inputMonto.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const siguiente = fila.nextElementSibling || agregarFilaCaptura();
+      siguiente.querySelector(".captura-producto").focus();
+    }
+  });
+  for (const input of [inputProducto, inputMonto]) {
+    input.addEventListener("input", () => {
+      fila.classList.remove("invalida");
+      actualizarTotalCaptura();
+    });
+  }
+
+  fila.append(inputProducto, inputMonto, botonQuitar);
+  cont.appendChild(fila);
+  return fila;
+}
+
+function reiniciarFilasCaptura() {
+  document.getElementById("filas-captura").innerHTML = "";
+  agregarFilaCaptura();
+  actualizarTotalCaptura();
+}
+
+function actualizarTotalCaptura() {
+  const filas = leerFilasCaptura().filas;
+  const total = filas.reduce((s, f) => s + (f.monto || 0), 0);
+  document.getElementById("total-captura").textContent = filas.length
+    ? `${filas.length} producto${filas.length === 1 ? "" : "s"} · ${formatearMoneda(total)}`
+    : "";
+}
+
+// Lee las filas con producto escrito. Una fila con producto pero sin monto
+// válido se marca como inválida; las filas vacías se ignoran.
+function leerFilasCaptura() {
+  const filas = [];
+  const invalidas = [];
+  for (const fila of document.querySelectorAll("#filas-captura .fila-captura")) {
+    const producto = fila.querySelector(".captura-producto").value.trim();
+    const textoMonto = fila.querySelector(".captura-monto").value.trim();
+    if (!producto && !textoMonto) continue;
+    const monto = Number(textoMonto);
+    if (!producto || textoMonto === "" || !Number.isFinite(monto) || monto < 0) {
+      invalidas.push(fila);
+      continue;
+    }
+    filas.push({ producto, monto });
+  }
+  return { filas, invalidas };
+}
+
+function construirLinea({ producto, monto }, cliente, pagado) {
+  if (!cliente) {
+    return {
+      producto, esPersonal: true, pagado: false,
+      costoTemuPersonal: monto, precioCobrado: null,
+      clienteId: null, clienteNombre: null
+    };
+  }
+  return {
+    producto, esPersonal: false, pagado,
+    precioCobrado: monto, costoTemuPersonal: null,
+    clienteId: cliente.id, clienteNombre: cliente.nombre
+  };
+}
+
+async function manejarGuardarCaptura(e) {
+  e.preventDefault();
+  const error = document.getElementById("error-captura");
+  const ok = document.getElementById("ok-captura");
+  const boton = document.getElementById("boton-guardar-captura");
+  error.textContent = "";
+  ok.textContent = "";
+
+  const esPersonal = esCapturaPersonal();
+  const nombreCliente = document.getElementById("input-cliente").value.trim();
+  const { filas, invalidas } = leerFilasCaptura();
+
+  if (!esPersonal && !nombreCliente) {
+    error.textContent = "Escribe el nombre del cliente.";
+    document.getElementById("input-cliente").focus();
+    return;
+  }
+  if (invalidas.length) {
+    invalidas.forEach(f => f.classList.add("invalida"));
+    error.textContent = "Revisa las filas marcadas: cada producto necesita su monto.";
+    invalidas[0].querySelector(".captura-producto").focus();
+    return;
+  }
+  if (!filas.length) {
+    error.textContent = "Agrega al menos un producto.";
+    return;
+  }
+
+  boton.disabled = true;
+  boton.textContent = "Guardando…";
+  try {
+    const cliente = esPersonal ? null : await obtenerOCrearCliente(nombreCliente);
+    const pagado = document.getElementById("input-pagado-ya").checked;
+    await agregarLineasPedido(pedidoId, filas.map(f => construirLinea(f, cliente, pagado)));
+
+    ok.textContent = `✓ ${filas.length} producto${filas.length === 1 ? "" : "s"} guardado${filas.length === 1 ? "" : "s"}` +
+      (cliente ? ` para ${cliente.nombre}` : "");
+
+    // Listo para el siguiente cliente: se conserva el tipo, se limpia lo demás.
+    document.getElementById("input-cliente").value = "";
+    document.getElementById("input-pagado-ya").checked = false;
+    actualizarAyudaCliente();
+    reiniciarFilasCaptura();
+    poblarListaClientes();
+    enfocarInicioCaptura();
+    cargarDetalle();
+  } catch (err) {
+    console.error("Error guardando productos:", err);
+    error.textContent = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo; no se perdió lo que escribiste.";
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Guardar productos";
+  }
+}
+
+/* ---------- Pegar lista: "cliente, producto, precio" por línea ---------- */
+
+function iniciarPegarLista() {
+  const input = document.getElementById("input-pegar");
+  input.addEventListener("input", actualizarResumenPegar);
+  document.getElementById("form-pegar").addEventListener("submit", manejarGuardarPegar);
+}
+
+function convertirPrecio(texto) {
+  const limpio = texto.replace(/[$\s]/g, "");
+  if (limpio === "") return NaN;
+  return Number(limpio);
+}
+
+// Cada línea: cliente, producto, precio. Acepta tabuladores (Excel), punto y coma
+// o comas. El producto puede llevar comas: se toma todo lo que hay en medio.
+function parsearLista(texto) {
+  const items = [];
+  const errores = [];
+
+  texto.split(/\r?\n/).forEach((renglon, i) => {
+    if (!renglon.trim()) return;
+    const separador = renglon.includes("\t") ? "\t" : renglon.includes(";") ? ";" : ",";
+    const partes = renglon.split(separador).map(p => p.trim());
+    if (partes.length < 3) {
+      errores.push(`Línea ${i + 1}: faltan datos (cliente, producto, precio)`);
+      return;
+    }
+    const cliente = partes[0];
+    const precio = convertirPrecio(partes[partes.length - 1]);
+    const producto = partes.slice(1, -1).join(separador === "\t" ? " " : `${separador} `).trim();
+    if (!cliente || !producto) {
+      errores.push(`Línea ${i + 1}: falta el cliente o el producto`);
+    } else if (!Number.isFinite(precio) || precio < 0) {
+      errores.push(`Línea ${i + 1}: el precio "${partes[partes.length - 1]}" no es un número`);
+    } else {
+      items.push({ cliente, producto, monto: precio });
+    }
+  });
+
+  return { items, errores };
+}
+
+function actualizarResumenPegar() {
+  const { items, errores } = parsearLista(document.getElementById("input-pegar").value);
+  const nombres = new Map();
+  for (const it of items) nombres.set(normalizarNombre(it.cliente), it.cliente);
+  const nuevos = [...nombres.values()].filter(n => !buscarClientePorNombre(n)).length;
+  const total = items.reduce((s, it) => s + it.monto, 0);
+
+  document.getElementById("resumen-pegar").textContent = items.length
+    ? `${items.length} producto${items.length === 1 ? "" : "s"} para ${nombres.size} cliente${nombres.size === 1 ? "" : "s"}` +
+      (nuevos ? ` (${nuevos} nuevo${nuevos === 1 ? "" : "s"})` : "") + ` · ${formatearMoneda(total)}`
+    : "";
+  document.getElementById("error-pegar").textContent = errores.join(" · ");
+  document.getElementById("ok-pegar").textContent = "";
+}
+
+async function manejarGuardarPegar(e) {
+  e.preventDefault();
+  const error = document.getElementById("error-pegar");
+  const ok = document.getElementById("ok-pegar");
+  const boton = document.getElementById("boton-guardar-pegar");
+  const { items, errores } = parsearLista(document.getElementById("input-pegar").value);
+
+  if (errores.length) {
+    error.textContent = "Corrige estas líneas antes de guardar: " + errores.join(" · ");
+    return;
+  }
+  if (!items.length) {
+    error.textContent = "Pega al menos una línea.";
+    return;
+  }
+
+  boton.disabled = true;
+  boton.textContent = "Guardando…";
+  try {
+    // Los clientes se resuelven uno a uno para no crear el mismo dos veces.
+    const clientesPorNombre = new Map();
+    for (const it of items) {
+      const clave = normalizarNombre(it.cliente);
+      if (!clientesPorNombre.has(clave)) {
+        clientesPorNombre.set(clave, await obtenerOCrearCliente(it.cliente));
+      }
+    }
+    const pagado = document.getElementById("input-pagado-pegar").checked;
+    const lineas = items.map(it =>
+      construirLinea(it, clientesPorNombre.get(normalizarNombre(it.cliente)), pagado));
+    await agregarLineasPedido(pedidoId, lineas);
+
+    document.getElementById("input-pegar").value = "";
+    document.getElementById("input-pagado-pegar").checked = false;
+    actualizarResumenPegar();
+    ok.textContent = `✓ ${lineas.length} productos guardados para ${clientesPorNombre.size} clientes`;
+    poblarListaClientes();
+    cargarDetalle();
+  } catch (err) {
+    console.error("Error guardando la lista:", err);
+    error.textContent = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo; la lista sigue aquí.";
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Guardar lista";
+  }
 }
 
 let lineaEnEdicionId = null;
@@ -358,49 +706,6 @@ function renderResultadoCierre(pedido) {
       <span class="fila-monto gold">${formatearMoneda(pedido.ganancia)}</span>
     </div>
   `;
-}
-
-async function manejarAgregarLinea(e) {
-  e.preventDefault();
-
-  const esPersonal = document.getElementById("input-tipo-linea").value === "personal";
-  const producto = document.getElementById("input-producto").value.trim();
-  const yaPago = document.getElementById("input-pagado-ya").checked;
-
-  const linea = { producto, esPersonal, pagado: esPersonal ? false : yaPago };
-
-  if (esPersonal) {
-    linea.costoTemuPersonal = Number(document.getElementById("input-costo-personal").value) || 0;
-    linea.precioCobrado = null;
-    linea.clienteId = null;
-    linea.clienteNombre = null;
-  } else {
-    linea.precioCobrado = Number(document.getElementById("input-precio").value) || 0;
-    linea.costoTemuPersonal = null;
-
-    const selectCliente = document.getElementById("input-cliente");
-    if (selectCliente.value === "__nuevo__") {
-      const nombreNuevo = document.getElementById("input-cliente-nuevo").value.trim();
-      if (!nombreNuevo) { alert("Escribe el nombre del cliente nuevo."); return; }
-      const ref = await crearCliente(nombreNuevo);
-      linea.clienteId = ref.id;
-      linea.clienteNombre = nombreNuevo;
-    } else {
-      const cliente = clientesCache.find(c => c.id === selectCliente.value);
-      linea.clienteId = cliente.id;
-      linea.clienteNombre = cliente.nombre;
-    }
-  }
-
-  await agregarLineaPedido(pedidoId, linea);
-
-  document.getElementById("form-linea").reset();
-  actualizarCamposSegunTipo();
-
-  clientesCache = await listarClientes();
-  poblarSelectClientes();
-
-  cargarDetalle();
 }
 
 async function manejarCerrarPedido(e) {

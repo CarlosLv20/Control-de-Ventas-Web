@@ -2,7 +2,7 @@
 import { db } from "./firebase-config.js";
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDocs, getDoc,
-  query, orderBy, onSnapshot, serverTimestamp
+  query, orderBy, onSnapshot, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ---------- Referencias ----------
@@ -119,6 +119,19 @@ export function suscribirPedidos(callback) {
 // linea: { clienteId, clienteNombre, producto, precioCobrado, pagado, esPersonal, costoTemuPersonal }
 export async function agregarLineaPedido(pedidoId, linea) {
   return addDoc(detallePedidoRef(pedidoId), linea);
+}
+
+// Guarda varias líneas en una sola operación: o se guardan todas o ninguna.
+// Firestore admite hasta 500 escrituras por lote, así que partimos en tandas.
+export async function agregarLineasPedido(pedidoId, lineas) {
+  const TAMANO_LOTE = 450;
+  for (let i = 0; i < lineas.length; i += TAMANO_LOTE) {
+    const lote = writeBatch(db);
+    for (const linea of lineas.slice(i, i + TAMANO_LOTE)) {
+      lote.set(doc(detallePedidoRef(pedidoId)), linea);
+    }
+    await lote.commit();
+  }
 }
 
 export async function listarLineasPedido(pedidoId) {
