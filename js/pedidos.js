@@ -30,6 +30,31 @@ function mostrarAviso(texto) {
 
 const AVISO_CONEXION = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.";
 
+/* ---------- Cantidad y precio unitario de cada línea ---------- */
+
+function calcularTotal(cantidad, unitario) {
+  return Math.round(cantidad * unitario * 100) / 100;
+}
+
+function esCantidadValida(cantidad) {
+  return Number.isInteger(cantidad) && cantidad >= 1;
+}
+
+// Las líneas registradas antes de agregar la cantidad no la tienen: valen como 1.
+function cantidadLinea(l) {
+  return Number(l.cantidad) || 1;
+}
+
+// Total de la línea: lo cobrado al cliente, o lo que costó si es compra personal.
+function montoLinea(l) {
+  return Number(l.esPersonal ? l.costoTemuPersonal : l.precioCobrado) || 0;
+}
+
+function unitarioLinea(l) {
+  const unitario = l.esPersonal ? l.costoUnitario : l.precioUnitario;
+  return unitario != null ? Number(unitario) : montoLinea(l) / cantidadLinea(l);
+}
+
 /* ============================================================
    Vista: lista de pedidos
    ============================================================ */
@@ -212,7 +237,7 @@ function actualizarCamposSegunTipo() {
   const esPersonal = esCapturaPersonal();
   document.getElementById("campo-cliente").style.display = esPersonal ? "none" : "flex";
   document.getElementById("campo-pagado").style.display = esPersonal ? "none" : "flex";
-  document.getElementById("etiqueta-monto").textContent = esPersonal ? "Costo en Temu" : "Precio cobrado";
+  document.getElementById("etiqueta-monto").textContent = esPersonal ? "Costo unit." : "Precio unit.";
   actualizarTotalCaptura();
 }
 
@@ -237,6 +262,16 @@ function agregarFilaCaptura() {
   inputProducto.type = "text";
   inputProducto.className = "captura-producto";
   inputProducto.placeholder = "Producto";
+  inputProducto.setAttribute("aria-label", "Producto");
+
+  const inputCantidad = document.createElement("input");
+  inputCantidad.type = "number";
+  inputCantidad.step = "1";
+  inputCantidad.min = "1";
+  inputCantidad.value = "1";
+  inputCantidad.inputMode = "numeric";
+  inputCantidad.className = "captura-cantidad";
+  inputCantidad.setAttribute("aria-label", "Cantidad");
 
   const inputMonto = document.createElement("input");
   inputMonto.type = "number";
@@ -245,6 +280,11 @@ function agregarFilaCaptura() {
   inputMonto.inputMode = "decimal";
   inputMonto.className = "captura-monto";
   inputMonto.placeholder = "0.00";
+  inputMonto.setAttribute("aria-label", "Precio unitario");
+
+  const totalFila = document.createElement("span");
+  totalFila.className = "captura-total-fila";
+  totalFila.textContent = formatearMoneda(0);
 
   const botonQuitar = document.createElement("button");
   botonQuitar.type = "button";
@@ -257,27 +297,30 @@ function agregarFilaCaptura() {
     actualizarTotalCaptura();
   });
 
-  inputProducto.addEventListener("keydown", (e) => {
+  // Enter: producto → cantidad → precio → fila siguiente (o una nueva al final)
+  const alPresionarEnter = (destino) => (e) => {
     if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      inputMonto.focus();
+      destino();
     }
-  });
-  inputMonto.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      const siguiente = fila.nextElementSibling || agregarFilaCaptura();
-      siguiente.querySelector(".captura-producto").focus();
-    }
-  });
-  for (const input of [inputProducto, inputMonto]) {
+  };
+  inputProducto.addEventListener("keydown", alPresionarEnter(() => inputCantidad.select()));
+  inputCantidad.addEventListener("keydown", alPresionarEnter(() => inputMonto.focus()));
+  inputMonto.addEventListener("keydown", alPresionarEnter(() => {
+    const siguiente = fila.nextElementSibling || agregarFilaCaptura();
+    siguiente.querySelector(".captura-producto").focus();
+  }));
+
+  for (const input of [inputProducto, inputCantidad, inputMonto]) {
     input.addEventListener("input", () => {
       fila.classList.remove("invalida");
+      totalFila.textContent = formatearMoneda(
+        calcularTotal(Number(inputCantidad.value) || 0, Number(inputMonto.value) || 0));
       actualizarTotalCaptura();
     });
   }
 
-  fila.append(inputProducto, inputMonto, botonQuitar);
+  fila.append(inputProducto, inputCantidad, inputMonto, totalFila, botonQuitar);
   cont.appendChild(fila);
   return fila;
 }
@@ -290,14 +333,15 @@ function reiniciarFilasCaptura() {
 
 function actualizarTotalCaptura() {
   const filas = leerFilasCaptura().filas;
-  const total = filas.reduce((s, f) => s + (f.monto || 0), 0);
+  const unidades = filas.reduce((s, f) => s + f.cantidad, 0);
+  const total = filas.reduce((s, f) => s + calcularTotal(f.cantidad, f.unitario), 0);
   document.getElementById("total-captura").textContent = filas.length
-    ? `${filas.length} producto${filas.length === 1 ? "" : "s"} · ${formatearMoneda(total)}`
+    ? `${unidades} unidad${unidades === 1 ? "" : "es"} · ${formatearMoneda(total)}`
     : "";
 }
 
-// Lee las filas con producto escrito. Una fila con producto pero sin monto
-// válido se marca como inválida; las filas vacías se ignoran.
+// Lee las filas con producto escrito. Una fila con producto pero sin precio
+// o con cantidad menor a 1 se marca como inválida; las filas vacías se ignoran.
 function leerFilasCaptura() {
   const filas = [];
   const invalidas = [];
@@ -305,27 +349,35 @@ function leerFilasCaptura() {
     const producto = fila.querySelector(".captura-producto").value.trim();
     const textoMonto = fila.querySelector(".captura-monto").value.trim();
     if (!producto && !textoMonto) continue;
-    const monto = Number(textoMonto);
-    if (!producto || textoMonto === "" || !Number.isFinite(monto) || monto < 0) {
+    const cantidad = Number(fila.querySelector(".captura-cantidad").value);
+    const unitario = Number(textoMonto);
+    if (!producto || !esCantidadValida(cantidad) || textoMonto === "" ||
+        !Number.isFinite(unitario) || unitario < 0) {
       invalidas.push(fila);
       continue;
     }
-    filas.push({ producto, monto });
+    filas.push({ producto, cantidad, unitario });
   }
   return { filas, invalidas };
 }
 
-function construirLinea({ producto, monto }, cliente, pagado) {
+// Guarda cantidad y precio unitario, y también el total de la línea
+// (precioCobrado / costoTemuPersonal), que es lo que suman los totales,
+// la ganancia del pedido y el recibo.
+function construirLinea({ producto, cantidad, unitario }, cliente, pagado) {
+  const total = calcularTotal(cantidad, unitario);
   if (!cliente) {
     return {
-      producto, esPersonal: true, pagado: false,
-      costoTemuPersonal: monto, precioCobrado: null,
+      producto, cantidad, esPersonal: true, pagado: false,
+      costoUnitario: unitario, costoTemuPersonal: total,
+      precioUnitario: null, precioCobrado: null,
       clienteId: null, clienteNombre: null
     };
   }
   return {
-    producto, esPersonal: false, pagado,
-    precioCobrado: monto, costoTemuPersonal: null,
+    producto, cantidad, esPersonal: false, pagado,
+    precioUnitario: unitario, precioCobrado: total,
+    costoUnitario: null, costoTemuPersonal: null,
     clienteId: cliente.id, clienteNombre: cliente.nombre
   };
 }
@@ -349,7 +401,7 @@ async function manejarGuardarCaptura(e) {
   }
   if (invalidas.length) {
     invalidas.forEach(f => f.classList.add("invalida"));
-    error.textContent = "Revisa las filas marcadas: cada producto necesita su monto.";
+    error.textContent = "Revisa las filas marcadas: cada producto necesita cantidad (mínimo 1) y precio.";
     invalidas[0].querySelector(".captura-producto").focus();
     return;
   }
@@ -400,8 +452,10 @@ function convertirPrecio(texto) {
   return Number(limpio);
 }
 
-// Cada línea: cliente, producto, precio. Acepta tabuladores (Excel), punto y coma
-// o comas. El producto puede llevar comas: se toma todo lo que hay en medio.
+// Cada línea: cliente, producto, [cantidad,] precio unitario. Acepta tabuladores
+// (Excel), punto y coma o comas. El producto puede llevar comas: se toma todo lo
+// que hay en medio. La cantidad solo se reconoce si es un número entero suelto
+// justo antes del precio; si no está, vale 1.
 function parsearLista(texto) {
   const items = [];
   const errores = [];
@@ -416,13 +470,21 @@ function parsearLista(texto) {
     }
     const cliente = partes[0];
     const precio = convertirPrecio(partes[partes.length - 1]);
-    const producto = partes.slice(1, -1).join(separador === "\t" ? " " : `${separador} `).trim();
+    let cantidad = 1;
+    let finProducto = -1;
+    if (partes.length >= 4 && /^\d+$/.test(partes[partes.length - 2])) {
+      cantidad = Number(partes[partes.length - 2]);
+      finProducto = -2;
+    }
+    const producto = partes.slice(1, finProducto).join(separador === "\t" ? " " : `${separador} `).trim();
     if (!cliente || !producto) {
       errores.push(`Línea ${i + 1}: falta el cliente o el producto`);
     } else if (!Number.isFinite(precio) || precio < 0) {
       errores.push(`Línea ${i + 1}: el precio "${partes[partes.length - 1]}" no es un número`);
+    } else if (!esCantidadValida(cantidad)) {
+      errores.push(`Línea ${i + 1}: la cantidad debe ser 1 o más`);
     } else {
-      items.push({ cliente, producto, monto: precio });
+      items.push({ cliente, producto, cantidad, unitario: precio });
     }
   });
 
@@ -434,10 +496,11 @@ function actualizarResumenPegar() {
   const nombres = new Map();
   for (const it of items) nombres.set(normalizarNombre(it.cliente), it.cliente);
   const nuevos = [...nombres.values()].filter(n => !buscarClientePorNombre(n)).length;
-  const total = items.reduce((s, it) => s + it.monto, 0);
+  const total = items.reduce((s, it) => s + calcularTotal(it.cantidad, it.unitario), 0);
+  const unidades = items.reduce((s, it) => s + it.cantidad, 0);
 
   document.getElementById("resumen-pegar").textContent = items.length
-    ? `${items.length} producto${items.length === 1 ? "" : "s"} para ${nombres.size} cliente${nombres.size === 1 ? "" : "s"}` +
+    ? `${unidades} unidad${unidades === 1 ? "" : "es"} para ${nombres.size} cliente${nombres.size === 1 ? "" : "s"}` +
       (nuevos ? ` (${nuevos} nuevo${nuevos === 1 ? "" : "s"})` : "") + ` · ${formatearMoneda(total)}`
     : "";
   document.getElementById("error-pegar").textContent = errores.join(" · ");
@@ -571,14 +634,11 @@ const ICONOS = {
 // Líneas cuyo cambio de pago se está guardando: su botón se muestra atenuado.
 const lineasGuardando = new Set();
 
-function montoLinea(l) {
-  return Number(l.esPersonal ? l.costoTemuPersonal : l.precioCobrado) || 0;
-}
-
-function crearCelda(clase = "", texto = "") {
+function crearCelda(clase = "", contenido = "") {
   const td = document.createElement("td");
   if (clase) td.className = clase;
-  td.textContent = texto;
+  if (contenido instanceof Node) td.appendChild(contenido);
+  else td.textContent = contenido;
   return td;
 }
 
@@ -604,68 +664,76 @@ function renderLineas(lineas) {
 
   const cerrado = pedidoActual.estado === "cerrado";
   const tabla = document.createElement("table");
-  tabla.className = "tabla-lineas";
+  tabla.className = `tabla-pedido${cerrado ? " cerrado" : ""}`;
   tabla.innerHTML = `
     <thead>
       <tr>
+        <th>Cliente</th>
         <th>Producto</th>
-        <th class="num">Precio</th>
-        <th class="col-estado">Estado</th>
-        <th class="col-acciones"><span class="solo-lectores">Acciones</span></th>
+        <th class="centro">Cant.</th>
+        <th class="num">P. unitario</th>
+        <th class="num">Total</th>
+        <th>Estado</th>
+        ${cerrado ? "" : '<th class="col-boton">Editar</th><th class="col-boton">Eliminar</th>'}
       </tr>
     </thead>
   `;
   const cuerpo = document.createElement("tbody");
 
   for (const grupo of agruparLineasPorCliente(lineas)) {
-    cuerpo.appendChild(crearFilaGrupo(grupo));
-    for (const l of grupo.lineas) {
-      cuerpo.appendChild(l.id === lineaEnEdicionId ? crearFormularioEdicion(l) : crearFilaLinea(l, cerrado));
-    }
+    cuerpo.appendChild(crearEncabezadoMovil(grupo));
+    grupo.lineas.forEach((l, i) => {
+      const primera = i === 0;
+      cuerpo.appendChild(l.id === lineaEnEdicionId
+        ? crearFormularioEdicion(l, grupo, primera)
+        : crearFilaLinea(l, grupo, primera, cerrado));
+    });
+    cuerpo.appendChild(crearFilaSubtotal(grupo, cerrado));
   }
   tabla.appendChild(cuerpo);
-  tabla.appendChild(crearPieTabla(lineas));
+  tabla.appendChild(crearPieTabla(lineas, cerrado));
   cont.appendChild(tabla);
 }
 
-function crearFilaGrupo(grupo) {
-  const total = grupo.lineas.reduce((s, l) => s + montoLinea(l), 0);
-  const fila = document.createElement("tr");
-  fila.className = "fila-grupo";
+function textoUnidades(n) {
+  return `${n} unidad${n === 1 ? "" : "es"}`;
+}
 
+function crearSaldo(debe, textoDebe, textoAlDia) {
+  const saldo = document.createElement("span");
+  saldo.className = `grupo-debe ${debe ? "debe" : "al-dia"}`;
+  saldo.textContent = debe ? `${textoDebe} ${formatearMoneda(debe)}` : textoAlDia;
+  return saldo;
+}
+
+// En celular la tabla se ve como tarjetas: cada cliente abre con su nombre
+// y cierra con su subtotal. En computadora el nombre va en la columna Cliente.
+function crearEncabezadoMovil(grupo) {
+  const fila = document.createElement("tr");
+  fila.className = "solo-movil";
   const nombre = crearCelda();
   const etiqueta = document.createElement("span");
   etiqueta.className = "grupo-nombre";
   etiqueta.textContent = grupo.nombre;
-  const cuenta = document.createElement("span");
-  cuenta.className = "grupo-cuenta";
-  cuenta.textContent = `${grupo.lineas.length} producto${grupo.lineas.length === 1 ? "" : "s"}`;
-  nombre.append(etiqueta, cuenta);
-
-  const estado = crearCelda("col-estado");
-  if (!grupo.esPersonal) {
-    const debe = grupo.lineas.filter(l => !l.pagado).reduce((s, l) => s + montoLinea(l), 0);
-    const saldo = document.createElement("span");
-    saldo.className = `grupo-debe ${debe ? "debe" : "al-dia"}`;
-    saldo.textContent = debe ? `debe ${formatearMoneda(debe)}` : "al día";
-    estado.appendChild(saldo);
-  }
-
-  const monto = crearCelda("num", formatearMoneda(total));
-  monto.classList.add(grupo.esPersonal ? "rust" : "grupo-total");
-
-  fila.append(nombre, monto, estado, crearCelda("col-acciones"));
+  nombre.appendChild(etiqueta);
+  fila.appendChild(nombre);
   return fila;
 }
 
-function crearFilaLinea(l, cerrado) {
+function crearCeldaCliente(grupo, primera) {
+  const celda = crearCelda(`cliente${primera ? "" : " cliente-repetido"}`, primera ? grupo.nombre : "");
+  if (grupo.esPersonal) celda.classList.add("personal");
+  return celda;
+}
+
+function crearFilaLinea(l, grupo, primera, cerrado) {
   const fila = document.createElement("tr");
   fila.className = "fila-linea";
 
-  const monto = crearCelda("num", formatearMoneda(montoLinea(l)));
-  monto.classList.add(l.esPersonal ? "rust" : "gold");
+  const total = crearCelda("num total-linea", formatearMoneda(montoLinea(l)));
+  if (l.esPersonal) total.classList.add("rust");
 
-  const estado = crearCelda("col-estado");
+  const estado = crearCelda("estado");
   if (!l.esPersonal) {
     const indicador = document.createElement(cerrado ? "span" : "button");
     pintarBotonPagado(indicador, l.pagado);
@@ -679,41 +747,69 @@ function crearFilaLinea(l, cerrado) {
     estado.appendChild(indicador);
   }
 
-  const acciones = crearCelda("col-acciones");
+  fila.append(
+    crearCeldaCliente(grupo, primera),
+    crearCelda("producto", l.producto),
+    crearCelda("centro cant", String(cantidadLinea(l))),
+    crearCelda("num unit", formatearMoneda(unitarioLinea(l))),
+    total,
+    crearCelda("detalle-movil", `${cantidadLinea(l)} × ${formatearMoneda(unitarioLinea(l))}`),
+    estado
+  );
+
   if (!cerrado) {
-    acciones.append(
-      crearBotonIcono("editar", "Editar", () => {
+    fila.append(
+      crearCelda("col-boton", crearBotonIcono("editar", "Editar", () => {
         lineaEnEdicionId = l.id;
         refrescarLineas();
         document.querySelector(".fila-linea.editando input")?.focus();
-      }),
-      crearBotonIcono("eliminar", "Eliminar", () => eliminarLineaAlInstante(l))
+      })),
+      crearCelda("col-boton", crearBotonIcono("eliminar", "Eliminar", () => eliminarLineaAlInstante(l)))
     );
   }
-
-  fila.append(crearCelda("", l.producto), monto, estado, acciones);
   return fila;
 }
 
-function crearPieTabla(lineas) {
+function crearFilaSubtotal(grupo, cerrado) {
+  const unidades = grupo.lineas.reduce((s, l) => s + cantidadLinea(l), 0);
+  const total = grupo.lineas.reduce((s, l) => s + montoLinea(l), 0);
+
+  const fila = document.createElement("tr");
+  fila.className = "subtotal";
+  const etiqueta = crearCelda("", grupo.esPersonal
+    ? `Subtotal de compras personales · ${textoUnidades(unidades)}`
+    : `Subtotal de ${grupo.nombre} · ${textoUnidades(unidades)}`);
+  etiqueta.colSpan = 4;
+
+  const monto = crearCelda("num", formatearMoneda(total));
+  if (grupo.esPersonal) monto.classList.add("rust");
+
+  const saldo = crearCelda("estado");
+  if (!grupo.esPersonal) {
+    const debe = grupo.lineas.filter(l => !l.pagado).reduce((s, l) => s + montoLinea(l), 0);
+    saldo.appendChild(crearSaldo(debe, "debe", "al día"));
+  }
+
+  fila.append(etiqueta, monto, saldo);
+  if (!cerrado) fila.append(crearCelda("col-boton"), crearCelda("col-boton"));
+  return fila;
+}
+
+function crearPieTabla(lineas, cerrado) {
   const ventas = lineas.filter(l => !l.esPersonal);
+  const unidades = ventas.reduce((s, l) => s + cantidadLinea(l), 0);
   const total = ventas.reduce((s, l) => s + montoLinea(l), 0);
   const porCobrar = ventas.filter(l => !l.pagado).reduce((s, l) => s + montoLinea(l), 0);
 
   const pie = document.createElement("tfoot");
   const fila = document.createElement("tr");
-  const saldo = crearCelda("col-estado");
-  const etiqueta = document.createElement("span");
-  etiqueta.className = `grupo-debe ${porCobrar ? "debe" : "al-dia"}`;
-  etiqueta.textContent = porCobrar ? `por cobrar ${formatearMoneda(porCobrar)}` : "todo cobrado";
-  saldo.appendChild(etiqueta);
+  const etiqueta = crearCelda("", `Total cobrado a clientes · ${textoUnidades(unidades)}`);
+  etiqueta.colSpan = 4;
+  const saldo = crearCelda("estado");
+  saldo.appendChild(crearSaldo(porCobrar, "por cobrar", "todo cobrado"));
 
-  fila.append(
-    crearCelda("", `Total cobrado a clientes · ${ventas.length} producto${ventas.length === 1 ? "" : "s"}`),
-    crearCelda("num", formatearMoneda(total)),
-    saldo,
-    crearCelda("col-acciones")
-  );
+  fila.append(etiqueta, crearCelda("num", formatearMoneda(total)), saldo);
+  if (!cerrado) fila.append(crearCelda("col-boton"), crearCelda("col-boton"));
   pie.appendChild(fila);
   return pie;
 }
@@ -758,9 +854,9 @@ async function eliminarLineaAlInstante(l) {
   }
 }
 
-// Edición dentro de la misma fila: producto y monto se vuelven campos.
-// Enter guarda y Esc cancela.
-function crearFormularioEdicion(l) {
+// Edición dentro de la misma fila: producto, cantidad y precio unitario se
+// vuelven campos y el total se recalcula al escribir. Enter guarda y Esc cancela.
+function crearFormularioEdicion(l, grupo, primera) {
   const fila = document.createElement("tr");
   fila.className = "fila-linea editando";
 
@@ -770,14 +866,31 @@ function crearFormularioEdicion(l) {
   inputProducto.placeholder = "Producto";
   inputProducto.setAttribute("aria-label", "Producto");
 
-  const inputMonto = document.createElement("input");
-  inputMonto.className = "celda num";
-  inputMonto.type = "number";
-  inputMonto.step = "0.01";
-  inputMonto.min = "0";
-  inputMonto.inputMode = "decimal";
-  inputMonto.value = montoLinea(l);
-  inputMonto.setAttribute("aria-label", l.esPersonal ? "Costo en Temu" : "Precio cobrado");
+  const inputCantidad = document.createElement("input");
+  inputCantidad.className = "celda num cant";
+  inputCantidad.type = "number";
+  inputCantidad.step = "1";
+  inputCantidad.min = "1";
+  inputCantidad.inputMode = "numeric";
+  inputCantidad.value = cantidadLinea(l);
+  inputCantidad.setAttribute("aria-label", "Cantidad");
+
+  const inputUnitario = document.createElement("input");
+  inputUnitario.className = "celda num unit";
+  inputUnitario.type = "number";
+  inputUnitario.step = "0.01";
+  inputUnitario.min = "0";
+  inputUnitario.inputMode = "decimal";
+  inputUnitario.value = Math.round(unitarioLinea(l) * 100) / 100;
+  inputUnitario.setAttribute("aria-label", l.esPersonal ? "Costo unitario" : "Precio unitario");
+
+  const total = crearCelda("num total-linea", formatearMoneda(montoLinea(l)));
+  const recalcular = () => {
+    total.textContent = formatearMoneda(
+      calcularTotal(Number(inputCantidad.value) || 0, Number(inputUnitario.value) || 0));
+  };
+  inputCantidad.addEventListener("input", recalcular);
+  inputUnitario.addEventListener("input", recalcular);
 
   const cancelar = () => {
     lineaEnEdicionId = null;
@@ -789,15 +902,32 @@ function crearFormularioEdicion(l) {
 
   async function guardar() {
     const producto = inputProducto.value.trim();
-    const monto = Number(inputMonto.value);
-    if (!producto || inputMonto.value === "" || !Number.isFinite(monto) || monto < 0) {
-      mostrarAviso("Escribe el producto y un monto válido.");
-      (producto ? inputMonto : inputProducto).focus();
+    const cantidad = Number(inputCantidad.value);
+    const unitario = Number(inputUnitario.value);
+    if (!producto) {
+      mostrarAviso("Escribe el nombre del producto.");
+      inputProducto.focus();
       return;
     }
-    const cambios = { producto };
-    if (l.esPersonal) cambios.costoTemuPersonal = monto;
-    else cambios.precioCobrado = monto;
+    if (!esCantidadValida(cantidad)) {
+      mostrarAviso("La cantidad debe ser un número entero de 1 o más.");
+      inputCantidad.focus();
+      return;
+    }
+    if (inputUnitario.value === "" || !Number.isFinite(unitario) || unitario < 0) {
+      mostrarAviso("Escribe un precio válido.");
+      inputUnitario.focus();
+      return;
+    }
+
+    const cambios = { producto, cantidad };
+    if (l.esPersonal) {
+      cambios.costoUnitario = unitario;
+      cambios.costoTemuPersonal = calcularTotal(cantidad, unitario);
+    } else {
+      cambios.precioUnitario = unitario;
+      cambios.precioCobrado = calcularTotal(cantidad, unitario);
+    }
 
     botonGuardar.disabled = true;
     try {
@@ -818,14 +948,17 @@ function crearFormularioEdicion(l) {
     if (e.key === "Escape") cancelar();
   });
 
-  const celdaProducto = crearCelda();
-  celdaProducto.appendChild(inputProducto);
-  const celdaMonto = crearCelda("num");
-  celdaMonto.appendChild(inputMonto);
-  const acciones = crearCelda("col-acciones");
-  acciones.append(botonGuardar, botonCancelar);
-
-  fila.append(celdaProducto, celdaMonto, crearCelda("col-estado"), acciones);
+  fila.append(
+    crearCeldaCliente(grupo, primera),
+    crearCelda("producto", inputProducto),
+    crearCelda("centro cant", inputCantidad),
+    crearCelda("num unit", inputUnitario),
+    total,
+    crearCelda("detalle-movil"),
+    crearCelda("estado"),
+    crearCelda("col-boton", botonGuardar),
+    crearCelda("col-boton", botonCancelar)
+  );
   return fila;
 }
 

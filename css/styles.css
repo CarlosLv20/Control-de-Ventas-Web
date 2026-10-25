@@ -249,69 +249,93 @@ a.fila-ledger.fila-link:hover {
   padding: 16px 4px;
 }
 
-/* ---------- Tabla de líneas del pedido, agrupada por cliente ---------- */
+/* ---------- Tabla del pedido: cuadrícula con una columna por dato ---------- */
 
-.tabla-lineas {
+.tabla-pedido {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  border: 1px solid var(--border);
 }
 
-.tabla-lineas th {
-  text-align: left;
-  font-weight: 500;
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  z-index: 1;
-}
-
-.tabla-lineas td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+.tabla-pedido th,
+.tabla-pedido td {
+  border: 1px solid var(--border);
+  padding: 9px 10px;
   vertical-align: middle;
 }
 
-.tabla-lineas .num {
+.tabla-pedido th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface-raised);
+  white-space: nowrap;
+}
+
+.tabla-pedido .num {
   text-align: right;
   font-family: var(--font-mono);
   white-space: nowrap;
 }
 
-.tabla-lineas th.num { font-family: var(--font-body); }
-.tabla-lineas .gold { color: var(--accent-text); }
-.tabla-lineas .rust { color: var(--rust); }
+.tabla-pedido th.num { font-family: var(--font-body); }
+.tabla-pedido .centro { text-align: center; }
+.tabla-pedido .total-linea { color: var(--accent-text); }
+.tabla-pedido .rust { color: var(--rust); }
 
-.tabla-lineas .col-estado { width: 140px; }
-.tabla-lineas .col-acciones { width: 1%; white-space: nowrap; text-align: right; }
-
-.tabla-lineas .fila-linea td:first-child { padding-left: 22px; }
-.tabla-lineas .fila-linea:hover td { background: var(--surface); }
-
-.fila-grupo td {
-  background: var(--surface);
-  padding-top: 11px;
-  padding-bottom: 11px;
+.tabla-pedido .cliente {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
+
+.tabla-pedido .cliente.personal { color: var(--rust); }
+.tabla-pedido .cliente-repetido { border-top-color: transparent; }
+.tabla-pedido .fila-linea:hover td { background: var(--surface); }
+.tabla-pedido .col-boton { width: 1%; text-align: center; }
+.tabla-pedido .col-boton .icono { margin: 0; }
+.tabla-pedido .solo-movil,
+.tabla-pedido .detalle-movil { display: none; }
+
+.tabla-pedido .subtotal td {
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.tabla-pedido .subtotal .num {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tabla-pedido .subtotal .num.rust { color: var(--rust); }
+
+.tabla-pedido tfoot td {
+  background: var(--surface-raised);
+  font-weight: 500;
+}
+
+.tabla-pedido .fila-linea.editando td { background: var(--surface-raised); }
+
+.tabla-pedido input.celda {
+  width: 100%;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.tabla-pedido input.celda.num { font-family: var(--font-mono); text-align: right; }
+.tabla-pedido input.celda.cant { width: 64px; text-align: center; }
+.tabla-pedido input.celda.unit { width: 100px; }
 
 .grupo-nombre {
   font-family: var(--font-display);
   font-size: 0.98rem;
 }
-
-.grupo-cuenta {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  margin-left: 8px;
-}
-
-.grupo-total { font-weight: 500; }
 
 .grupo-debe {
   font-family: var(--font-mono);
@@ -321,25 +345,6 @@ a.fila-ledger.fila-link:hover {
 
 .grupo-debe.debe { color: var(--pendiente); }
 .grupo-debe.al-dia { color: var(--pagado-hover); }
-
-.tabla-lineas tfoot td {
-  border-bottom: none;
-  padding-top: 14px;
-  font-weight: 500;
-}
-
-.tabla-lineas .fila-linea.editando td { background: var(--surface-raised); }
-
-.tabla-lineas input.celda {
-  width: 100%;
-  min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--accent-dim);
-  border-radius: var(--radius);
-  padding: 6px 8px;
-}
-
-.tabla-lineas input.celda.num { max-width: 130px; }
 
 .solo-lectores {
   position: absolute;
@@ -617,7 +622,7 @@ button.estado-pago.guardando {
 .captura-encabezado,
 .fila-captura {
   display: grid;
-  grid-template-columns: 1fr 120px 36px;
+  grid-template-columns: minmax(0, 1fr) 70px 110px 100px 36px;
   gap: 8px;
   align-items: center;
 }
@@ -627,6 +632,9 @@ button.estado-pago.guardando {
   color: var(--text-muted);
   margin-bottom: 6px;
 }
+
+.captura-encabezado .centro { text-align: center; }
+.captura-encabezado .derecha { text-align: right; }
 
 .fila-captura { margin-bottom: 8px; }
 
@@ -647,6 +655,18 @@ button.estado-pago.guardando {
 .fila-captura .captura-monto {
   font-family: var(--font-mono);
   text-align: right;
+}
+
+.fila-captura .captura-cantidad {
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.captura-total-fila {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-align: right;
+  color: var(--accent-text);
 }
 
 .fila-captura.invalida input { border-color: var(--rust); }
@@ -690,52 +710,106 @@ button.estado-pago.guardando {
 
   .stats-grid { grid-template-columns: 1fr; }
 
-  /* Tabla de líneas → tarjetas: producto y precio arriba, estado y botones abajo */
-  .tabla-lineas thead { display: none; }
-  .tabla-lineas, .tabla-lineas tbody, .tabla-lineas tfoot,
-  .tabla-lineas tr, .tabla-lineas td { display: block; width: 100%; }
+  /* Captura: producto arriba; cantidad, precio y total abajo */
+  .captura-encabezado { display: none; }
 
-  .tabla-lineas .fila-grupo {
+  .fila-captura {
+    grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "prod prod quitar" "cant unit total";
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fila-captura .captura-producto { grid-area: prod; }
+  .fila-captura .captura-cantidad { grid-area: cant; }
+  .fila-captura .captura-monto { grid-area: unit; }
+  .fila-captura .captura-total-fila { grid-area: total; }
+  .fila-captura .boton-mini { grid-area: quitar; justify-self: end; width: 36px; }
+
+  /* Tabla del pedido → tarjetas: nombre del cliente arriba, productos, subtotal abajo */
+  .tabla-pedido,
+  .tabla-pedido thead, .tabla-pedido tbody, .tabla-pedido tfoot,
+  .tabla-pedido tr, .tabla-pedido td { display: block; width: 100%; border: none; }
+  .tabla-pedido thead { display: none; }
+
+  .tabla-pedido tr.solo-movil {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 2px 12px;
     background: var(--surface);
     padding: 10px 8px;
     border-bottom: 1px solid var(--border);
+    border-radius: 6px 6px 0 0;
   }
-  .tabla-lineas .fila-grupo td { width: auto; padding: 0; border: none; background: none; }
-  .tabla-lineas .fila-grupo td:first-child { flex: 1 1 100%; }
-  .tabla-lineas .fila-grupo td:empty { display: none; }
+  .tabla-pedido tr.solo-movil td { padding: 0; }
 
-  .tabla-lineas .fila-linea {
+  .tabla-pedido .fila-linea {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px 10px;
+    grid-template-columns: minmax(0, 1fr) 32px 32px;
+    gap: 6px 8px;
     align-items: center;
     padding: 10px 4px;
     border-bottom: 1px solid var(--border);
   }
-  .tabla-lineas .fila-linea td { width: auto; padding: 0; border: none; }
-  .tabla-lineas .fila-linea td:first-child { padding-left: 0; }
-  .tabla-lineas .fila-linea:hover td { background: none; }
-  .tabla-lineas .fila-linea .col-acciones { grid-column: 2; }
-  .tabla-lineas .fila-linea .col-estado:empty { display: none; }
+  .tabla-pedido .fila-linea td { width: auto; padding: 0; }
+  .tabla-pedido .fila-linea:hover td { background: none; }
+  .tabla-pedido .fila-linea .cliente,
+  .tabla-pedido .fila-linea .cant,
+  .tabla-pedido .fila-linea .unit { display: none; }
+  .tabla-pedido .fila-linea .producto { grid-column: 1; }
+  .tabla-pedido .fila-linea .total-linea { grid-column: 2 / 4; }
+  .tabla-pedido .fila-linea .detalle-movil {
+    display: block;
+    grid-column: 1 / -1;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .tabla-pedido .fila-linea .estado { grid-column: 1; }
+  .tabla-pedido .fila-linea .estado:empty { min-height: 32px; }
+  .tabla-pedido .col-boton { width: auto; }
 
-  .tabla-lineas .fila-linea.editando { background: var(--surface-raised); padding: 10px 8px; }
-  .tabla-lineas .fila-linea.editando td { background: none; }
-  .tabla-lineas input.celda.num { max-width: none; }
+  .tabla-pedido .fila-linea.editando {
+    grid-template-columns: 64px minmax(0, 1fr) auto auto;
+    background: var(--surface-raised);
+    padding: 10px 8px;
+  }
+  .tabla-pedido .fila-linea.editando td { background: none; }
+  .tabla-pedido .fila-linea.editando .producto { grid-column: 1 / -1; }
+  .tabla-pedido .fila-linea.editando .cant { display: block; grid-column: 1; }
+  .tabla-pedido .fila-linea.editando .unit { display: block; grid-column: 2; }
+  .tabla-pedido .fila-linea.editando .total-linea { grid-column: 3 / 5; }
+  .tabla-pedido .fila-linea.editando .estado,
+  .tabla-pedido .fila-linea.editando .detalle-movil { display: none; }
+  .tabla-pedido .fila-linea.editando .col-boton:nth-last-child(2) { grid-column: 3; }
+  .tabla-pedido .fila-linea.editando .col-boton:last-child { grid-column: 4; }
+  .tabla-pedido input.celda.cant,
+  .tabla-pedido input.celda.unit { width: 100%; }
 
-  .tabla-lineas tfoot tr {
+  .tabla-pedido tr.subtotal {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    align-items: baseline;
+    background: var(--surface);
+    padding: 10px 8px;
+    margin-bottom: 14px;
+    border-top: 2px solid var(--border);
+    border-radius: 0 0 6px 6px;
+  }
+  .tabla-pedido tr.subtotal td { width: auto; padding: 0; background: none; }
+  .tabla-pedido tr.subtotal td:empty { display: none; }
+  .tabla-pedido tr.subtotal td:first-child { font-size: 0.82rem; }
+  .tabla-pedido tr.subtotal .num { font-size: 1rem; }
+  .tabla-pedido tr.subtotal .estado { grid-column: 1 / -1; text-align: right; }
+
+  .tabla-pedido tfoot tr {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 4px 12px;
-    padding-top: 14px;
+    padding: 14px 4px 0;
   }
-  .tabla-lineas tfoot td { width: auto; padding: 0 4px; }
-  .tabla-lineas tfoot td:first-child { flex: 1 1 100%; }
-  .tabla-lineas tfoot td:empty { display: none; }
+  .tabla-pedido tfoot td { width: auto; padding: 0; background: none; }
+  .tabla-pedido tfoot td:first-child { flex: 1 1 100%; }
+  .tabla-pedido tfoot td:empty { display: none; }
 
   .nav-movil {
     display: flex;

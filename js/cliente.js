@@ -7,6 +7,17 @@ function formatearMoneda(valor) {
   return "$" + (Number(valor) || 0).toFixed(2);
 }
 
+// Las líneas registradas antes de agregar la cantidad no la tienen: valen como 1.
+function cantidadLinea(l) {
+  return Number(l.cantidad) || 1;
+}
+
+function unitarioLinea(l) {
+  return l.precioUnitario != null
+    ? Number(l.precioUnitario)
+    : (Number(l.precioCobrado) || 0) / cantidadLinea(l);
+}
+
 function formatearFecha(timestamp) {
   if (!timestamp || !timestamp.toDate) return "";
   return timestamp.toDate().toLocaleDateString("es-SV", { year: "numeric", month: "long", day: "numeric" });
@@ -64,10 +75,14 @@ function renderPedidosCliente(cliente, compras) {
       fila.className = "fila-ledger";
       const estadoTexto = l.pagado ? "Pagado" : "Pendiente";
       fila.innerHTML = `
-        <span class="fila-tipo">${l.producto}</span>
+        <span class="fila-tipo"></span>
         <span class="fila-nota"><span class="estado-pago ${l.pagado ? "pagado" : "pendiente"}">${estadoTexto}</span></span>
         <span class="fila-monto gold">${formatearMoneda(l.precioCobrado)}</span>
       `;
+      const cantidad = cantidadLinea(l);
+      fila.querySelector(".fila-tipo").textContent = cantidad > 1
+        ? `${l.producto} (${cantidad} × ${formatearMoneda(unitarioLinea(l))})`
+        : l.producto;
       ledger.appendChild(fila);
     }
 
@@ -124,14 +139,18 @@ function generarRecibo(cliente, compra) {
   y += 30;
   doc.setFont("helvetica", "bold");
   doc.text("Producto", margen, y);
-  doc.text("Precio", 500, y, { align: "right" });
+  doc.text("Cant.", 345, y, { align: "center" });
+  doc.text("P. unitario", 430, y, { align: "right" });
+  doc.text("Total", 500, y, { align: "right" });
   doc.setLineWidth(0.5);
   doc.line(margen, y + 6, 540, y + 6);
 
   y += 22;
   doc.setFont("helvetica", "normal");
   for (const l of compra.lineas) {
-    doc.text(l.producto, margen, y);
+    doc.text(doc.splitTextToSize(l.producto, 260)[0], margen, y);
+    doc.text(String(cantidadLinea(l)), 345, y, { align: "center" });
+    doc.text(formatearMoneda(unitarioLinea(l)), 430, y, { align: "right" });
     doc.text(formatearMoneda(l.precioCobrado), 500, y, { align: "right" });
     y += 20;
   }

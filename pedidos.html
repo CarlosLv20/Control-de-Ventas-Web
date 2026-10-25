@@ -70,7 +70,7 @@
         </div>
 
         <!-- Modo 1: un cliente, varios productos seguidos -->
-        <form id="form-linea" autocomplete="off">
+        <form id="form-linea" autocomplete="off" novalidate>
           <div class="campo">
             <label for="input-tipo-linea">Tipo</label>
             <select id="input-tipo-linea">
@@ -88,7 +88,9 @@
 
           <div class="captura-encabezado">
             <span>Producto</span>
-            <span id="etiqueta-monto">Precio cobrado</span>
+            <span class="centro">Cant.</span>
+            <span class="derecha" id="etiqueta-monto">Precio unit.</span>
+            <span class="derecha">Total</span>
             <span></span>
           </div>
           <div id="filas-captura"></div>
@@ -105,7 +107,7 @@
             </label>
           </div>
 
-          <p class="ayuda">Enter pasa al siguiente campo y crea una fila nueva al final. Ctrl + Enter guarda.</p>
+          <p class="ayuda">Enter: producto → cantidad → precio → fila nueva. Ctrl + Enter guarda.</p>
           <p class="ayuda error" id="error-captura"></p>
           <button type="submit" class="boton" id="boton-guardar-captura">Guardar productos</button>
           <p class="mensaje-ok" id="ok-captura"></p>
@@ -114,10 +116,10 @@
         <!-- Modo 2: pegar muchas líneas de golpe (WhatsApp, Excel, notas) -->
         <form id="form-pegar" style="display:none">
           <div class="campo">
-            <label for="input-pegar">Una línea por producto: cliente, producto, precio</label>
-            <textarea id="input-pegar" rows="8" placeholder="María López, Audífonos, 350&#10;María López, Funda de teléfono, 120&#10;Juan Pérez, Lámpara LED, 220"></textarea>
+            <label for="input-pegar">Una línea por producto: cliente, producto, cantidad (opcional), precio unitario</label>
+            <textarea id="input-pegar" rows="8" placeholder="María López, Audífonos, 350&#10;María López, Funda de teléfono, 2, 120&#10;Juan Pérez, Lámpara LED, 220"></textarea>
           </div>
-          <p class="ayuda">También funciona copiando 3 columnas desde Excel. Los clientes que no existan se crean solos.</p>
+          <p class="ayuda">Si no pones cantidad, se toma 1. También funciona copiando 3 o 4 columnas desde Excel. Los clientes que no existan se crean solos.</p>
           <p class="ayuda" id="resumen-pegar"></p>
           <p class="ayuda error" id="error-pegar"></p>
 
