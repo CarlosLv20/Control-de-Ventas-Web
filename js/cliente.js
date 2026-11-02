@@ -1,4 +1,5 @@
 import { obtenerCliente, listarComprasCliente } from "./db.js";
+import { icono } from "./iconos.js";
 
 const params = new URLSearchParams(location.search);
 const clienteId = params.get("id");
@@ -100,7 +101,7 @@ function renderPedidosCliente(cliente, compras) {
     const botonRecibo = document.createElement("button");
     botonRecibo.className = "boton secundario";
     botonRecibo.style.marginTop = "10px";
-    botonRecibo.textContent = "Generar recibo PDF";
+    botonRecibo.innerHTML = `${icono("recibo")} Generar recibo PDF`;
     botonRecibo.addEventListener("click", () => generarRecibo(cliente, c));
     bloque.appendChild(botonRecibo);
 

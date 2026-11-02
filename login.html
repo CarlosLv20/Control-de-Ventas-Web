@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="css/styles.css">
 <style>
   body.pantalla-login {
@@ -22,10 +25,6 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 6px;
-  }
-  .tarjeta-login h1 {
-    font-size: 1.4rem;
-    margin-bottom: 4px;
   }
   .tarjeta-login p.sub {
     color: var(--text-muted);
@@ -44,7 +43,8 @@
 <body class="pantalla-login">
 
 <div class="tarjeta-login">
-  <h1>Control de Ventas Online</h1>
+  <img src="img/logo-vertical-oscuro.svg" alt="Control de Ventas" width="160"
+       style="display:block;margin:0 auto 16px">
   <p class="sub">Inicia sesión para entrar</p>
 
   <form id="form-login">

@@ -84,20 +84,20 @@ button, input, select {
 }
 
 .marca {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  line-height: 1.25;
-  color: var(--text);
+  display: block;
 }
 
-.marca span {
+.marca img {
   display: block;
-  color: var(--accent-text);
-  font-size: 0.95rem;
+  width: 100%;
+  max-width: 180px;
+  height: auto;
 }
 
 .nav-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 9px 10px;
   border-radius: var(--radius);
   color: var(--text-muted);
@@ -295,7 +295,7 @@ a.fila-ledger.fila-link:hover {
 .tabla-pedido .cliente-repetido { border-top-color: transparent; }
 .tabla-pedido .fila-linea:hover td { background: var(--surface); }
 .tabla-pedido .col-boton { width: 1%; text-align: center; }
-.tabla-pedido .col-boton .icono { margin: 0; }
+.tabla-pedido .col-boton .boton-icono { margin: 0; }
 .tabla-pedido .solo-movil,
 .tabla-pedido .detalle-movil { display: none; }
 
@@ -355,8 +355,22 @@ a.fila-ledger.fila-link:hover {
   white-space: nowrap;
 }
 
-/* Botones de acción rellenos: azul = editar, rojo = eliminar, verde = guardar */
+/* Íconos del sprite img/iconos.svg: toman el color del texto (ver GUIA-LOGO-E-ICONOS.md).
+   El trazo va aquí porque <use> con un archivo externo no hereda los atributos del sprite. */
 .icono {
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Botones de acción rellenos: azul = editar, rojo = eliminar, verde = guardar */
+.boton-icono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -370,17 +384,17 @@ a.fila-ledger.fila-link:hover {
   transition: background 0.15s, transform 0.1s;
 }
 
-.icono svg { width: 16px; height: 16px; fill: currentColor; }
-.icono:active { transform: scale(0.94); }
-.icono:disabled { opacity: 0.6; cursor: wait; }
-.icono.editar { background: var(--accent); }
-.icono.editar:hover { background: var(--accent-hover); }
-.icono.eliminar { background: var(--rust); }
-.icono.eliminar:hover { background: #b84f38; }
-.icono.guardar { background: var(--pagado); }
-.icono.guardar:hover { background: var(--pagado-hover); }
-.icono.cancelar { background: var(--border); }
-.icono.cancelar:hover { background: #46536f; }
+.boton-icono .icono { width: 16px; height: 16px; }
+.boton-icono:active { transform: scale(0.94); }
+.boton-icono:disabled { opacity: 0.6; cursor: wait; }
+.boton-icono.editar { background: var(--accent); }
+.boton-icono.editar:hover { background: var(--accent-hover); }
+.boton-icono.eliminar { background: var(--rust); }
+.boton-icono.eliminar:hover { background: #b84f38; }
+.boton-icono.guardar { background: var(--pagado); }
+.boton-icono.guardar:hover { background: var(--pagado-hover); }
+.boton-icono.cancelar { background: var(--border); }
+.boton-icono.cancelar:hover { background: #46536f; }
 
 /* ---------- Acciones de línea (editar / eliminar) ---------- */
 
@@ -526,6 +540,10 @@ button.estado-pago.guardando {
 }
 
 .boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: var(--accent);
   color: #ffffff;
   border: none;
@@ -825,11 +843,17 @@ button.estado-pago.guardando {
   .nav-movil-link {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     text-align: center;
     font-size: 0.78rem;
     color: var(--text-muted);
     padding: 6px 0;
   }
+
+  .nav-movil-link .icono { width: 22px; height: 22px; }
 
   .nav-movil-link.activo { color: var(--accent-text); }
 }

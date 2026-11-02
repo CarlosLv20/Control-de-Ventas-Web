@@ -1,4 +1,4 @@
-import { listarPedidos, listarLineasPedido, listarMovimientos, calcularSaldo } from "./db.js";
+import { listarPedidosConResumen, listarMovimientos, calcularSaldo } from "./db.js";
 
 function formatearMoneda(valor) {
   return "$" + (Number(valor) || 0).toFixed(2);
@@ -54,7 +54,7 @@ function renderPedidosAbiertos(pedidos) {
 }
 
 async function cargarDashboard() {
-  const [pedidos, movimientos] = await Promise.all([listarPedidos(), listarMovimientos()]);
+  const [pedidos, movimientos] = await Promise.all([listarPedidosConResumen(), listarMovimientos()]);
 
   const saldo = calcularSaldo(movimientos);
   document.getElementById("saldo-fondo").textContent = formatearMoneda(saldo);
@@ -67,14 +67,9 @@ async function cargarDashboard() {
   const pedidosAbiertos = pedidos.filter(p => p.estado === "abierto");
   document.getElementById("pedidos-abiertos").textContent = pedidosAbiertos.length;
 
-  // Pagos pendientes: recorremos el detalle de cada pedido.
-  // (A esta escala son pocas lecturas; evita depender de un índice
-  // de colección-grupo en Firestore que habría que crear a mano.)
-  let pendientes = 0;
-  for (const p of pedidos) {
-    const lineas = await listarLineasPedido(p.id);
-    pendientes += lineas.filter(l => !l.esPersonal && !l.pagado).length;
-  }
+  // Pagos pendientes: sale del resumen guardado en cada pedido,
+  // sin leer las líneas de todos los pedidos.
+  const pendientes = pedidos.reduce((s, p) => s + p.resumen.pagosPendientes, 0);
   document.getElementById("pagos-pendientes").textContent = pendientes;
 
   renderPedidosAbiertos(pedidosAbiertos);
