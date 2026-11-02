@@ -33,9 +33,9 @@
 
   --radius: 4px;
 
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -331,6 +331,63 @@ a.fila-ledger.fila-link:hover {
 .tabla-pedido input.celda.num { font-family: var(--font-mono); text-align: right; }
 .tabla-pedido input.celda.cant { width: 64px; text-align: center; }
 .tabla-pedido input.celda.unit { width: 100px; }
+.tabla-pedido input.celda.invalida { border-color: var(--rust); }
+
+/* ---------- Tabla de clientes (misma base que la tabla del pedido) ---------- */
+
+.barra-tabla {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.buscador {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.buscador:focus-within {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+}
+
+.barra-tabla select {
+  padding: 9px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.barra-tabla select:focus {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.tabla-clientes .fila-cliente:hover td { background: var(--surface); }
+.tabla-clientes .fila-cliente.editando td { background: var(--surface-raised); }
+.tabla-clientes .editando .cliente input { min-width: 160px; }
+.tabla-clientes .telefono { white-space: nowrap; }
+.tabla-clientes .sin-dato { color: var(--text-muted); }
+.tabla-clientes .pendiente { color: var(--pendiente); }
+.tabla-clientes .al-dia { color: var(--pagado-hover); font-family: var(--font-body); }
 
 .grupo-nombre {
   font-family: var(--font-display);
@@ -798,6 +855,56 @@ button.estado-pago.guardando {
   .tabla-pedido .fila-linea.editando .detalle-movil { display: none; }
   .tabla-pedido .fila-linea.editando .col-boton:nth-last-child(2) { grid-column: 3; }
   .tabla-pedido .fila-linea.editando .col-boton:last-child { grid-column: 4; }
+
+  /* Tabla de clientes → tarjetas: nombre y lo que debe arriba, detalle y botones abajo */
+  .tabla-clientes .fila-cliente {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 32px 32px;
+    gap: 6px 8px;
+    align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabla-clientes .fila-cliente td { width: auto; padding: 0; }
+  .tabla-clientes .fila-cliente:hover td { background: none; }
+  .tabla-clientes .fila-cliente .telefono,
+  .tabla-clientes .fila-cliente .pedidos,
+  .tabla-clientes .fila-cliente .comprado { display: none; }
+  .tabla-clientes .fila-cliente .cliente { grid-column: 1; grid-row: 1; white-space: normal; }
+  .tabla-clientes .fila-cliente .debe { grid-column: 2 / 4; grid-row: 1; }
+  .tabla-clientes .fila-cliente .detalle-movil {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .tabla-clientes .fila-cliente .col-boton { grid-row: 2; }
+
+  .tabla-clientes .fila-cliente.editando {
+    grid-template-columns: minmax(0, 1fr) 32px 32px;
+    background: var(--surface-raised);
+    padding: 10px 8px;
+  }
+  .tabla-clientes .fila-cliente.editando td { background: none; }
+  .tabla-clientes .fila-cliente.editando .cliente { grid-column: 1 / -1; grid-row: 1; }
+  .tabla-clientes .fila-cliente.editando .telefono { display: block; grid-column: 1; grid-row: 2; }
+  .tabla-clientes .fila-cliente.editando .debe { display: none; }
+  .tabla-clientes .editando .cliente input { min-width: 0; }
+
+  .tabla-clientes tfoot tr {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-top: 12px;
+    padding: 12px 10px;
+    background: var(--surface-raised);
+    border-radius: 6px;
+  }
+  .tabla-clientes tfoot td:nth-child(2) { display: none; }
+  .tabla-clientes tfoot td.pendiente::before { content: "Por cobrar "; font-family: var(--font-body); color: var(--text-muted); }
   .tabla-pedido input.celda.cant,
   .tabla-pedido input.celda.unit { width: 100%; }
 

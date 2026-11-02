@@ -5,7 +5,8 @@ import {
   listarLineasPedido, agregarLineasPedido, actualizarLinea, eliminarLinea,
   cerrarPedido, eliminarPedido
 } from "./db.js";
-import { icono } from "./iconos.js";
+import { crearBotonIcono } from "./iconos.js";
+import { mostrarAviso, AVISO_CONEXION, normalizarNombre, crearCelda } from "./comun.js";
 
 const params = new URLSearchParams(location.search);
 const pedidoId = params.get("id");
@@ -13,24 +14,6 @@ const pedidoId = params.get("id");
 function formatearMoneda(valor) {
   return "$" + (Number(valor) || 0).toFixed(2);
 }
-
-// Aviso flotante para errores que no deben pasar desapercibidos.
-function mostrarAviso(texto) {
-  let aviso = document.getElementById("aviso");
-  if (!aviso) {
-    aviso = document.createElement("div");
-    aviso.id = "aviso";
-    aviso.className = "aviso";
-    aviso.setAttribute("role", "alert");
-    document.body.appendChild(aviso);
-  }
-  aviso.textContent = texto;
-  aviso.classList.add("visible");
-  clearTimeout(mostrarAviso.temporizador);
-  mostrarAviso.temporizador = setTimeout(() => aviso.classList.remove("visible"), 4000);
-}
-
-const AVISO_CONEXION = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.";
 
 /* ---------- Cantidad y precio unitario de cada línea ---------- */
 
@@ -146,12 +129,6 @@ async function iniciarVistaDetalle() {
 }
 
 /* ---------- Clientes: búsqueda por nombre ---------- */
-
-// Compara nombres sin importar mayúsculas, acentos ni espacios de más.
-function normalizarNombre(nombre) {
-  return nombre.normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .trim().replace(/\s+/g, " ").toLowerCase();
-}
 
 function buscarClientePorNombre(nombre) {
   const clave = normalizarNombre(nombre);
@@ -641,25 +618,6 @@ function agruparLineasPorCliente(lineas) {
 
 // Líneas cuyo cambio de pago se está guardando: su botón se muestra atenuado.
 const lineasGuardando = new Set();
-
-function crearCelda(clase = "", contenido = "") {
-  const td = document.createElement("td");
-  if (clase) td.className = clase;
-  if (contenido instanceof Node) td.appendChild(contenido);
-  else td.textContent = contenido;
-  return td;
-}
-
-function crearBotonIcono(tipo, titulo, alHacerClic) {
-  const boton = document.createElement("button");
-  boton.type = "button";
-  boton.className = `boton-icono ${tipo}`;
-  boton.title = titulo;
-  boton.setAttribute("aria-label", titulo);
-  boton.innerHTML = icono(tipo);
-  boton.addEventListener("click", alHacerClic);
-  return boton;
-}
 
 function renderLineas(lineas) {
   const cont = document.getElementById("lista-lineas");

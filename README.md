@@ -38,7 +38,19 @@ desde el navegador. Se publica en GitHub Pages.
   arriba, sus productos (con el detalle `2 × $6.00`) y el subtotal abajo.
 
 ### Clientes (`clientes.html`) y ficha del cliente (`cliente.html`)
-- Lista de clientes con lo que deben, alta, edición y eliminación.
+- **Tabla de clientes** con columnas **Cliente · Teléfono · Pedidos ·
+  Total comprado · Debe · Editar · Eliminar**. Lo que se debe sale en
+  ámbar; si no debe nada, "Al día" en verde. Al final, un pie con el
+  número de clientes, cuántos tienen saldo pendiente, el total comprado
+  y el total por cobrar.
+- **Buscador** por nombre (sin importar acentos ni mayúsculas) o teléfono,
+  y **orden** por nombre, más deuda o más comprado.
+- **Alta, edición y eliminación al instante:** editar es dentro de la
+  misma fila (Enter guarda, Esc cancela); no deja guardar un nombre vacío
+  ni repetido; al eliminar avisa si el cliente aún debe. Si falla la
+  conexión, el cambio se deshace y aparece un aviso.
+- En **celular** cada cliente es una tarjeta: nombre y deuda arriba;
+  teléfono, pedidos y total comprado abajo, con los botones a la derecha.
 - Ficha de cada cliente (clic en su nombre): compras agrupadas por pedido,
   total comprado, total pendiente y **recibo en PDF** por pedido, con las
   columnas producto, cantidad, precio unitario y total (librería jsPDF
@@ -111,7 +123,10 @@ cliente, sus unidades, total y pendiente.
   `css/styles.css`; las reglas para celular solo cambian la distribución,
   nunca los colores. Si se ven distintos entre aparatos, es por la
   pantalla (modo de color, brillo), no por el sitio.
-- Tipografías: Fraunces (títulos), Inter (texto), IBM Plex Mono (cifras).
+- Tipografías (Google Fonts): **Bricolage Grotesque** (títulos y nombres),
+  **Figtree** (texto) y **DM Mono** (cifras, para que los montos queden
+  alineados). Se cambian en un solo lugar: las variables `--font-*` de
+  `:root` y el enlace de Google Fonts en el `<head>` de cada página.
 
 ## Plan de mejoras
 
@@ -120,7 +135,7 @@ cliente, sus unidades, total y pendiente.
 |---|---|---|
 | 1 | Pedido: cantidad + precio unitario, tabla con columnas de edición | ✅ Hecha |
 | 2 | Resumen guardado en cada pedido (carga rápida) | ✅ Hecha |
-| 3 | Tabla de Clientes: teléfono, pedidos, total comprado, debe, editar, eliminar | Pendiente |
+| 3 | Tabla de Clientes: teléfono, pedidos, total comprado, debe, editar, eliminar | ✅ Hecha |
 | 4 | Tabla de la lista de Pedidos (fecha, clientes, unidades, cobrado, por cobrar, ganancia) y tablas en Resumen | Pendiente |
 | 5 | Tabla de movimientos en Fondo y compras en tabla en la ficha del cliente | Pendiente |
 
@@ -207,11 +222,12 @@ control-ventas-temu/
     ├── firebase-config.js   Conexión a Firebase (Firestore + Auth)
     ├── auth-guard.js        Protege las páginas y maneja "Cerrar sesión"
     ├── iconos.js            icono(nombre): inserta un ícono del sprite
+    ├── comun.js             Avisos, celdas de tabla y comparar nombres (compartido)
     ├── login.js             Lógica de login.html
     ├── db.js                Lectura/escritura en Firestore y resumen de pedidos
     ├── dashboard.js         Lógica del Resumen
     ├── pedidos.js           Captura, tabla, edición y cierre de pedidos
-    ├── clientes.js          Lógica de Clientes
+    ├── clientes.js          Tabla de clientes: buscar, ordenar, editar, eliminar
     ├── cliente.js           Ficha del cliente + recibo PDF
     └── fondo.js             Lógica de Fondo
 ```
